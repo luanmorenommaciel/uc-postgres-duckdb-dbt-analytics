@@ -77,10 +77,10 @@ watch: ## Stream traffic and inject random failures SILENTLY (Ctrl-C to stop); a
 	$(GEN) watch $(RECORD_FLAG)
 
 land: ## Land Postgres into DuckDB via ATTACH (Postgres -> raw.* in the warehouse)
-	uv run python -m platform.landing.cli land
+	uv run python -m src.transition.cli land
 
 test: ## Run the pytest suite (no tests yet — added with the dbt/MCP build)
 	uv run pytest --no-header -q || [ $$? -eq 5 ]
 
 lint: ## Lint the Python code with ruff
-	uv run ruff check src platform
+	uv run ruff check src

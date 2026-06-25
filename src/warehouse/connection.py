@@ -1,25 +1,25 @@
-"""DuckDB connection helpers for the single shared warehouse file (C4).
+"""DuckDB connection helpers for the single shared warehouse file.
 
 This is the ONE place a DuckDB connection is opened. Every component routes
 through here so the path resolution (``DUCKDB_DATABASE``), MotherDuck escape
 hatch, and read-only enforcement live in a single spot.
 
-CONCURRENCY CONTRACT (from the interface contract):
-  - DuckDB is single-writer-process. Writers (C2 ingest, C3 dbt) call
-    :func:`connect` (read/write) BRIEFLY and NEVER concurrently — serialized by
-    the orchestration invariant (ingest-run THEN dbt-run).
-  - Readers (C5 MCP, C4h harness, C8 probe) call :func:`connect_read_only`
-    (``access_mode=READ_ONLY``) and may run concurrently with each other and
-    with a single writer.
+CONCURRENCY CONTRACT:
+  - DuckDB is single-writer-process. Writers call :func:`connect` (read/write)
+    BRIEFLY and NEVER concurrently — they are serialized so that only one write
+    connection is open at a time.
+  - Readers call :func:`connect_read_only` (``access_mode=READ_ONLY``) and may
+    run concurrently with each other and with a single writer.
 """
 
 from __future__ import annotations
 
 from contextlib import contextmanager
-from platform.warehouse.paths import ensure_parent_dir, warehouse_path_str
 from typing import TYPE_CHECKING, Any
 
 import duckdb
+
+from src.warehouse.paths import ensure_parent_dir, warehouse_path_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -34,8 +34,8 @@ def connect(
 
     Args:
         read_only: When ``True`` open with ``access_mode=READ_ONLY``. Readers
-            (C5/C4h/C8) MUST pass ``read_only=True``. Writers (C2/C3) leave it
-            ``False`` and are responsible for not running concurrently.
+            MUST pass ``read_only=True``. Writers leave it ``False`` and are
+            responsible for not running concurrently.
         config: Extra DuckDB config dict, merged on top of the access-mode key.
 
     Returns:
@@ -57,7 +57,16 @@ def connect(
 
 
 def connect_read_only(config: dict[str, Any] | None = None) -> duckdb.DuckDBPyConnection:
-    """Convenience wrapper for readers (C5 MCP / C4h / C8). Always read-only."""
+    """Open a read-only connection to the shared warehouse.
+
+    Convenience wrapper for readers; always opens with ``access_mode=READ_ONLY``.
+
+    Args:
+        config: Extra DuckDB config dict, merged on top of the access-mode key.
+
+    Returns:
+        An open read-only :class:`duckdb.DuckDBPyConnection`.
+    """
     return connect(read_only=True, config=config)
 
 
@@ -67,7 +76,17 @@ def connection(
     read_only: bool = False,
     config: dict[str, Any] | None = None,
 ) -> Iterator[duckdb.DuckDBPyConnection]:
-    """Context-managed warehouse connection that always closes the handle."""
+    """Yield a warehouse connection that is always closed on exit.
+
+    Args:
+        read_only: When ``True`` open with ``access_mode=READ_ONLY``; see
+            :func:`connect` for the writer/reader contract.
+        config: Extra DuckDB config dict, merged on top of the access-mode key.
+
+    Yields:
+        An open :class:`duckdb.DuckDBPyConnection` that is closed when the
+        ``with`` block exits, even on error.
+    """
     conn = connect(read_only=read_only, config=config)
     try:
         yield conn

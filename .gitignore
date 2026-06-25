@@ -8,6 +8,6 @@ __pycache__/
 *.duckdb.wal
 *.duckdb.tmp/
 # Warehouse: the single shared DuckDB file (DUCKDB_DATABASE default location)
-platform/warehouse/warehouse.duckdb
-platform/warehouse/warehouse.duckdb.wal
+src/warehouse/warehouse.duckdb
+src/warehouse/warehouse.duckdb.wal
 .DS_Store

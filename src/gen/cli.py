@@ -1,3 +1,11 @@
+"""Command-line interface for the synthetic order generator.
+
+Exposes subcommands to list defect modes, stream normal traffic, inject a single
+defect, revert schema drift, and run a continuous traffic-plus-injection watch
+loop. Injected defects are recorded to the ``injected_incidents`` ledger only
+when ``--record`` is passed; the default is silent.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -9,24 +17,31 @@ from src.gen.failures import REGISTRY
 
 
 def _list(_: argparse.Namespace) -> int:
+    """Print the available defect modes as a flat, aligned list.
+
+    Args:
+        _: Parsed arguments (unused).
+
+    Returns:
+        Process exit code (always ``0``).
+    """
     width = max(len(key) for key in REGISTRY)
-    base = sorted(k for k, f in REGISTRY.items() if f.unlocks.startswith("base crew"))
-    advanced = sorted(k for k, f in REGISTRY.items() if not f.unlocks.startswith("base crew"))
-
-    print("\nBASE CREW failures (detect / diagnose / report):")
-    for key in base:
+    print("\nAvailable failure modes:")
+    for key in sorted(REGISTRY):
         failure = REGISTRY[key]
-        print(f"  {key.ljust(width)}  [{failure.detected_by}]  {failure.summary}")
-
-    print("\nFEATURE-UNLOCKING failures (each demands a CrewAI capability):")
-    for key in advanced:
-        failure = REGISTRY[key]
-        print(f"  {key.ljust(width)}  [{failure.detected_by}]  {failure.summary}")
-        print(f"  {' '.ljust(width)}  -> unlocks {failure.unlocks}")
+        print(f"  {key.ljust(width)}   {failure.summary}")
     return 0
 
 
 def _traffic(args: argparse.Namespace) -> int:
+    """Insert a batch of normal orders and report the count.
+
+    Args:
+        args: Parsed arguments; uses ``args.orders``.
+
+    Returns:
+        Process exit code (always ``0``).
+    """
     with repo.session() as conn:
         inserted = engine.run_traffic(conn, args.orders)
     print(f"inserted {inserted:,} orders")
@@ -34,13 +49,29 @@ def _traffic(args: argparse.Namespace) -> int:
 
 
 def _inject(args: argparse.Namespace) -> int:
+    """Inject a single defect mode and report the result.
+
+    Args:
+        args: Parsed arguments; uses ``args.failure`` and ``args.record``.
+
+    Returns:
+        Process exit code (always ``0``).
+    """
     with repo.session() as conn:
         result = engine.inject(conn, args.failure, record=args.record)
-    print(f"injected {result.failure}: {result.detail}  (detected by {result.detected_by})")
+    print(f"injected {result.failure}: {result.detail}")
     return 0
 
 
 def _reset_schema(_: argparse.Namespace) -> int:
+    """Revert the schema-drift rename, restoring ``orders.customer_id``.
+
+    Args:
+        _: Parsed arguments (unused).
+
+    Returns:
+        Process exit code (always ``0``).
+    """
     with repo.session() as conn:
         column = repo.order_customer_column(conn)
         if column == "user_id":
@@ -53,6 +84,15 @@ def _reset_schema(_: argparse.Namespace) -> int:
 
 
 def _watch(args: argparse.Namespace) -> int:
+    """Run the continuous traffic-and-injection loop until interrupted.
+
+    Args:
+        args: Parsed arguments; uses ``interval``, ``batch``, ``failure_every``,
+            ``failures``, and ``record``.
+
+    Returns:
+        Process exit code (always ``0``).
+    """
     with repo.session() as conn:
         try:
             engine.watch(
@@ -70,6 +110,12 @@ def _watch(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser with all generator subcommands.
+
+    Returns:
+        A configured :class:`argparse.ArgumentParser` whose subparsers set a
+        ``func`` default to the handler for each command.
+    """
     parser = argparse.ArgumentParser(prog="gen", description="E-commerce traffic and failure generator.")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -108,6 +154,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse arguments and dispatch to the selected subcommand handler.
+
+    Args:
+        argv: Optional argument vector; defaults to ``sys.argv`` when ``None``.
+
+    Returns:
+        The exit code returned by the selected handler.
+    """
     args = build_parser().parse_args(argv)
     return args.func(args)
 

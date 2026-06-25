@@ -9,26 +9,40 @@ What ships here is small and honest:
 
 - a **Postgres** source schema (auto-applied on first boot),
 - a **deterministic seeder** that produces a clean, correlated baseline,
-- a **14-mode chaos generator** that injects realistic failures (and can log
-  ground truth to an `injected_incidents` ledger), and
-- a **landing step** that pulls Postgres into a **DuckDB** warehouse via `ATTACH`,
-  giving you `raw.*` tables to transform downstream.
+- a **14-mode chaos generator** that injects generic data-quality, schema, and
+  availability defects (and can log ground truth to an `injected_incidents`
+  ledger), and
+- a **transition step** (`src/transition`) that pulls Postgres into a **DuckDB**
+  warehouse via `ATTACH`, giving you `raw.*` tables to transform downstream.
+
+Postgres is containerized; **DuckDB is not** — it is an embedded, in-process
+library backed by a single local file. There is no DuckDB server or container.
 
 ## Architecture
 
 ```
   src/gen ──inject──▶ ┌────────────┐   make land    ┌──────────────────────┐
   src/seed ──seed──▶  │  Postgres  │ ──ATTACH/copy─▶ │  DuckDB warehouse     │
-                      │  (source)  │                 │  raw.*  (analytics)   │
+                      │ (container)│                 │  raw.*  (embedded file)│
                       └────────────┘                 └──────────────────────┘
                             │
                             └─ injected_incidents  (ground-truth ledger, opt-in)
 ```
 
-Postgres is the operational source. `make land` ATTACHes it from DuckDB and copies
-the source tables into `raw.*` inside a single DuckDB file
-(`platform/warehouse/warehouse.duckdb` by default; override with `DUCKDB_DATABASE`).
-That warehouse file is the seam everything downstream reads from.
+| Package          | Role |
+|------------------|------|
+| `src/db`         | Postgres connection + schema (`01_schema.sql`) |
+| `src/seed`       | Deterministic clean baseline (correlated synthetic data) |
+| `src/gen`        | 14-mode chaos generator + `injected_incidents` ledger |
+| `src/transition` | Postgres -> DuckDB `raw.*` movement via `ATTACH` (full refresh) |
+| `src/warehouse`  | The single DuckDB file + the connection contract |
+
+Postgres is the operational source. `make land` runs `src/transition`, which
+ATTACHes Postgres read-only from DuckDB and copies the source tables into `raw.*`
+inside a single embedded DuckDB file (`src/warehouse/warehouse.duckdb` by default;
+override with `DUCKDB_DATABASE`). That warehouse file is the seam everything
+downstream reads from. See [`src/transition/README.md`](src/transition/README.md)
+and [`src/warehouse/README.md`](src/warehouse/README.md) for the details.
 
 ## Quickstart
 
@@ -39,14 +53,14 @@ make up                          # start Postgres (schema auto-applied)
 make seed                        # deterministic clean baseline
 make land                        # Postgres -> DuckDB raw.* via ATTACH
 
-make inject FAILURE=schema_drift # inject a failure (SILENT by default)
+make inject FAILURE=schema_drift # inject a defect (SILENT by default)
 make failures                    # list all 14 failure modes
 ```
 
 ### Silent failures and the ledger
 
 Injection is **silent by default**: `make inject FAILURE=<key>` mutates the source
-but writes **nothing** to the `injected_incidents` ledger — the failure is in the
+but writes **nothing** to the `injected_incidents` ledger — the defect is in the
 data, undeclared, exactly as a real incident would arrive. To record ground truth
 (so a future detector can be scored against it), opt in:
 
@@ -74,7 +88,7 @@ detector that can already see the answer key proves nothing.
 | `clean`        | Remove containers and the data volume |
 | `failures`     | List the available failure modes |
 | `traffic`      | Insert normal orders (`TRAFFIC=count`) |
-| `inject`       | Inject one failure SILENTLY (`FAILURE=`); add `RECORD=1` to log the ledger |
+| `inject`       | Inject one defect SILENTLY (`FAILURE=`); add `RECORD=1` to log the ledger |
 | `reset-schema` | Revert schema drift (`user_id` -> `customer_id`) |
 | `watch`        | Stream traffic and inject random failures (Ctrl-C to stop) |
 | `land`         | Land Postgres into DuckDB via `ATTACH` (`raw.*`) |
@@ -91,5 +105,5 @@ deliberately absent so they can be built from first principles:
 
 - **dbt** — the Medallion (bronze/silver/gold) transformation over `raw.*`.
 - **FastAPI / MCP** — the intelligence layer that serves the warehouse.
-- **Sentinel** — the agent crew that watches the backbone, diagnoses injected
-  failures, and is scored against the `injected_incidents` ledger.
+- **Detection / scoring** — whatever watches the backbone, diagnoses the injected
+  defects, and is scored against the `injected_incidents` ledger.

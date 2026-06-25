@@ -1,3 +1,12 @@
+"""CLI entry point for seeding the source PostgreSQL database.
+
+Generates a clean, internally consistent baseline of e-commerce data
+(customers, products, orders, payments) and bulk-loads it into Postgres.
+Generation is deterministic for a given ``--seed`` so runs are reproducible.
+
+Run as a module, e.g. ``python -m src.seed.seed --orders 5000``.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -11,6 +20,14 @@ from .factories import EcommerceFactory, Order
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments for the seeder.
+
+    Args:
+        argv: Argument list to parse; defaults to ``sys.argv`` when ``None``.
+
+    Returns:
+        The parsed namespace with counts, the random seed, and the truncate flag.
+    """
     parser = argparse.ArgumentParser(
         prog="seed",
         description="Generate clean, correlated e-commerce data into the source PostgreSQL database.",
@@ -24,6 +41,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def run(customers: int, products: int, orders: int, seed: int, truncate: bool) -> dict[str, int]:
+    """Generate and load a full baseline dataset in a single transaction.
+
+    Seeds Faker for determinism, optionally truncates the existing data, then
+    inserts customers, products, orders, and payments in dependency order so
+    foreign keys resolve. Orders reference real customer and product ids and
+    never predate the customer's signup; payments mirror their order's amount.
+
+    Args:
+        customers: Number of customers to generate.
+        products: Number of products to generate.
+        orders: Number of orders to generate.
+        seed: Seed for the Faker RNG, fixing the generated data.
+        truncate: When True, empty all tables before inserting.
+
+    Returns:
+        A mapping of table name to its post-load row count.
+    """
     faker = Faker()
     Faker.seed(seed)
     factory = EcommerceFactory(faker)
@@ -84,6 +118,14 @@ def run(customers: int, products: int, orders: int, seed: int, truncate: bool) -
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the seeder from the command line and print per-table row counts.
+
+    Args:
+        argv: Argument list to parse; defaults to ``sys.argv`` when ``None``.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     args = parse_args(argv)
     totals = run(args.customers, args.products, args.orders, args.seed, args.truncate)
     width = max(len(t) for t in totals)

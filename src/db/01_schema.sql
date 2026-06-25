@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS injected_incidents (
     incident_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     failure_key   TEXT        NOT NULL,
     detail        TEXT        NOT NULL,
-    detected_by   TEXT        NOT NULL,
     injected_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

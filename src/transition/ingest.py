@@ -1,7 +1,8 @@
-"""C2 landing engine — full-refresh Postgres -> DuckDB ``raw.raw_*``.
+"""``src.transition`` engine — full-refresh Postgres -> DuckDB ``raw.raw_*``.
 
-This module lands the four source entities (customers, products, orders,
-payments) into ``raw.raw_*`` using DuckDB's ``postgres`` extension:
+This module is the Postgres -> DuckDB data-movement step. It lands the four
+source entities (customers, products, orders, payments) into ``raw.raw_*`` using
+DuckDB's ``postgres`` extension:
 
   1. Resolve the orders schema-drift column ONCE in Python via psycopg, mirroring
      :func:`src.gen.repository.order_customer_column` exactly (see
@@ -14,26 +15,26 @@ payments) into ``raw.raw_*`` using DuckDB's ``postgres`` extension:
   3. ``CREATE OR REPLACE TABLE raw.raw_<entity> AS SELECT ...`` per entity, copying
      the source columns 1:1 (DuckDB infers ``NUMERIC(p,s)`` -> ``DECIMAL(p,s)`` and
      ``TIMESTAMPTZ`` -> ``TIMESTAMP WITH TIME ZONE`` losslessly) and computing the
-     three trailing C2 lineage columns.
+     three trailing lineage columns.
   4. ``DETACH`` and drop the secret in a ``finally`` so a mid-run error still
      cleans up.
 
-Contract preserved from the prior Dagster ``platform.ingestion.assets`` module:
+Contract guarantees:
   - Money is ``DECIMAL`` (no float coercion — money columns are never cast).
   - Timestamps are ``TIMESTAMPTZ`` (tz-aware UTC). ``_ingested_at`` is a single
     run-level ``datetime.now(UTC)`` BOUND as ``$ingested_at`` (never ``now()`` in
     SQL, which would strip the tz to a naive ``TIMESTAMP``) so every row in a run
-    shares the exact C8/AC-3 freshness anchor.
+    shares the exact same freshness anchor.
   - ``_source_watermark`` is this run's high-watermark: ``(SELECT max(<wm>) FROM
     pg.public.<table>)``, identical on every row, NULL on an empty source.
   - ``_schema_drift`` exists ONLY on ``raw_orders``; the other three tables do not
-    carry it (the source ``_DDL`` asymmetry is preserved).
+    carry it (the source DDL asymmetry is preserved).
 
 Defects are NEVER dropped or repaired here — that is silver's job; defects land
-intact in ``raw.*`` (the U3 detection-seam assumption: defects survive into raw
+intact in ``raw.*`` (the detection-seam assumption: defects survive into raw
 unfiltered).
 
-ASSUMPTIONS (R4 / U3 discipline):
+ASSUMPTIONS:
   - This is a *full refresh*: no incremental/watermark state, no ``ON CONFLICT`` /
     MERGE, no lookback window, no PK-completeness arm. ``CREATE OR REPLACE`` makes
     re-runs idempotent (modulo ``_ingested_at``, which advances by design).
@@ -42,7 +43,7 @@ ASSUMPTIONS (R4 / U3 discipline):
     as a loud error, which is acceptable for a single-operator demo).
 
 The DuckDB connection is read/**write** (it writes ``raw.*``); the **ATTACH** is
-``READ_ONLY`` (the Postgres source is never modified) — that is the R3 one-way
+``READ_ONLY`` (the Postgres source is never modified) — that is the one-way
 dependency in code.
 """
 
@@ -50,12 +51,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from platform.warehouse.connection import connect
 from typing import TYPE_CHECKING
 
 import psycopg
 
 from src.db.connection import conninfo
+from src.warehouse.connection import connect
 
 if TYPE_CHECKING:
     import duckdb
@@ -69,9 +70,8 @@ RAW_SCHEMA = "raw"
 PG_ALIAS = "pg"
 SECRET_NAME = "pg_landing"
 
-# Statement timeout (ms) for the short drift-probe psycopg connection, in the
-# spirit of platform.ingestion.resources.PostgresResource — so the probe can
-# never hang the demo on a stalled source.
+# Statement timeout (ms) for the short drift-probe psycopg connection — so the
+# probe can never hang the demo on a stalled source.
 _PROBE_STATEMENT_TIMEOUT_MS = 10_000
 
 
@@ -84,9 +84,8 @@ _PROBE_STATEMENT_TIMEOUT_MS = 10_000
 class EntitySpec:
     """Static description of how one source table maps into ``raw`` (full refresh).
 
-    Trimmed from the prior Dagster ``EntitySpec``: no incremental/PK-arm fields,
-    since landing is full-refresh. ``watermark_col`` is still needed to compute
-    ``_source_watermark``.
+    Holds no incremental/PK-arm fields, since this step is full-refresh.
+    ``watermark_col`` is still needed to compute ``_source_watermark``.
     """
 
     entity: str  # 'customers' | 'products' | 'orders' | 'payments'
@@ -94,7 +93,7 @@ class EntitySpec:
     pk: str  # source primary key (for ORDER BY determinism only)
     watermark_col: str  # timestamp column -> max() feeds _source_watermark
     # STABLE raw-slot names, IN ORDER, copied straight from the source SELECT
-    # (i.e. excluding the C2-stamped trailing columns). For orders the
+    # (i.e. excluding the stamped trailing lineage columns). For orders the
     # "customer_id" slot is the stable name; the live source column is resolved
     # at runtime and SELECTed AS customer_id.
     source_columns: tuple[str, ...]
@@ -170,13 +169,19 @@ def resolve_order_customer_column(conn: psycopg.Connection) -> str:
     """Return the live source column for the order->customer link.
 
     EXACT verbatim mirror of :func:`src.gen.repository.order_customer_column`
-    (the C2 "mirror exactly" contract). Returns ``'user_id'`` after the
-    ``schema_drift`` failure renamed the column, else ``'customer_id'``. Landing
-    selects this column ``AS customer_id`` into the stable raw slot.
+    (the "mirror exactly" contract). Returns ``'user_id'`` after the
+    ``schema_drift`` failure renamed the column, else ``'customer_id'``. This step
+    selects that column ``AS customer_id`` into the stable raw slot.
 
-    Copied here (rather than imported) to keep ``platform.landing`` free of a
+    Copied here (rather than imported) to keep ``src.transition`` free of a
     runtime import dependency on ``src.gen`` (which carries faker/generator
-    weight); the dependency graph stays ``platform.* -> src.db`` only.
+    weight); the dependency graph stays ``src.transition -> src.db`` only.
+
+    Args:
+        conn: An open psycopg connection to the Postgres source.
+
+    Returns:
+        The live customer-link column name on ``orders``.
     """
     with conn.cursor() as cur:
         cur.execute(
@@ -193,13 +198,16 @@ def _resolve_drift() -> tuple[str, bool]:
     Returns ``(customer_col, schema_drift)`` where ``schema_drift`` is True iff
     the live column drifted to ``user_id``. The probe is bounded by a statement
     timeout so a stalled source cannot hang the run.
+
+    Returns:
+        A ``(customer_col, schema_drift)`` tuple.
     """
     info = conninfo()
     conn = psycopg.connect(**info, autocommit=True)
     try:
         with conn.cursor() as cur:
             # SET does not accept bind parameters; the timeout is a server-side
-            # int constant, never user input (R8).
+            # int constant, never user input.
             cur.execute("SET default_transaction_read_only = on")
             cur.execute(f"SET statement_timeout = {int(_PROBE_STATEMENT_TIMEOUT_MS)}")
         live_col = resolve_order_customer_column(conn)
@@ -220,7 +228,13 @@ def _q(value: str) -> str:
     the postgres-extension docs). ``CREATE SECRET`` does not accept bind
     parameters for its option values, so the env-derived constants are
     interpolated and defensively escaped here. Values originate from
-    :func:`src.db.connection.conninfo` (env vars), never from user input (R8).
+    :func:`src.db.connection.conninfo` (env vars), never from user input.
+
+    Args:
+        value: The raw string to embed inside a single-quoted SQL literal.
+
+    Returns:
+        The value with every single quote doubled, safe to interpolate.
     """
     return value.replace("'", "''")
 
@@ -228,10 +242,13 @@ def _q(value: str) -> str:
 def _attach_postgres_read_only(con: duckdb.DuckDBPyConnection) -> None:
     """Install/load the extension, create a temporary secret, ATTACH READ-ONLY.
 
-    Uses the DuckDB-managed secret form (Section 6 of the design): the password
-    stays out of the ATTACH string and out of error output. The secret is
-    ``TEMPORARY`` (the default) so nothing persists in the warehouse file. The
-    ATTACH is ``READ_ONLY`` and scoped to the ``public`` schema only.
+    Uses the DuckDB-managed secret form: the password stays out of the ATTACH
+    string and out of error output. The secret is ``TEMPORARY`` (the default) so
+    nothing persists in the warehouse file. The ATTACH is ``READ_ONLY`` and scoped
+    to the ``public`` schema only.
+
+    Args:
+        con: The read/write warehouse connection to attach the source onto.
     """
     con.execute("INSTALL postgres")
     con.execute("LOAD postgres")
@@ -248,13 +265,17 @@ def _attach_postgres_read_only(con: duckdb.DuckDBPyConnection) -> None:
         ")"
     )
     # Empty connection string => use everything from the secret. READ_ONLY is the
-    # R3 linchpin: landing can never write the source. SCHEMA 'public' narrows the
-    # attachment to the one schema we read.
+    # linchpin of the one-way dependency: this step can never write the source.
+    # SCHEMA 'public' narrows the attachment to the one schema we read.
     con.execute(f"ATTACH '' AS {PG_ALIAS} (TYPE postgres, READ_ONLY, SECRET {SECRET_NAME}, SCHEMA 'public')")
 
 
 def _detach_postgres(con: duckdb.DuckDBPyConnection) -> None:
-    """Release the PG connection and drop the temporary secret (belt-and-suspenders)."""
+    """Release the PG connection and drop the temporary secret (belt-and-suspenders).
+
+    Args:
+        con: The warehouse connection the source is attached to.
+    """
     con.execute(f"DETACH {PG_ALIAS}")
     con.execute(f"DROP SECRET IF EXISTS {SECRET_NAME}")
 
@@ -271,6 +292,17 @@ def _build_projection(spec: EntitySpec, customer_col: str | None) -> str:
     identifier slot and aliased back to ``customer_id``. Identifiers cannot be
     bound parameters in any SQL engine, so the live column — resolved from
     ``information_schema`` (never user input) — is templated into the query text.
+
+    Args:
+        spec: The entity whose projection is being built.
+        customer_col: The resolved live orders customer column; required for
+            orders, ignored otherwise.
+
+    Returns:
+        The comma-separated SELECT projection string.
+
+    Raises:
+        ValueError: If ``spec`` is orders but ``customer_col`` is None.
     """
     if spec.entity == "orders":
         if customer_col is None:  # pragma: no cover - defensive; land_all always passes it
@@ -308,6 +340,9 @@ def land_entity(
         customer_col: The live orders customer column (``'customer_id'`` |
             ``'user_id'``). Required for orders; ignored otherwise.
         schema_drift: Bound as ``$schema_drift`` for orders only.
+
+    Returns:
+        A :class:`LandResult` describing the landed entity.
     """
     target = f"{RAW_SCHEMA}.raw_{spec.entity}"
     source = f"{PG_ALIAS}.public.{spec.source_table}"
@@ -377,13 +412,20 @@ def land_all(con: duckdb.DuckDBPyConnection | None = None) -> dict[str, LandResu
 
     Idempotent (``CREATE OR REPLACE``); a failure mid-run leaves already-landed
     tables intact and propagates loudly (no catch-and-swallow).
+
+    Args:
+        con: An optional caller-owned read/write warehouse connection. When None,
+            this function opens and closes its own.
+
+    Returns:
+        A mapping of entity name to its :class:`LandResult`.
     """
     # (1) Resolve drift once, before any ATTACH, so the identifier and the bound
     # boolean derive from a single source and can never disagree.
     customer_col, schema_drift = _resolve_drift()
 
     # (2) One UTC wall-clock instant stamped on every row of every table this run
-    # — the non-negotiable C8/AC-3 freshness anchor.
+    # — the non-negotiable freshness anchor.
     ingested_at = datetime.now(UTC)
 
     owns_connection = con is None
