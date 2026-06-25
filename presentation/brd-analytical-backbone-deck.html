@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business Requirements — Analytical Backbone Initiative</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-editorial: 'Newsreader', 'Georgia', serif;
+    --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+    --bg: #08080a; --surface: #111114; --surface2: #19191e;
+    --border: rgba(120,160,220,0.08); --border-bright: rgba(120,160,220,0.18);
+    --text: #eaedf2; --text-dim: #6e7a8c;
+    --accent: #4a9eff; --accent-dim: rgba(74,158,255,0.10);
+    --silver: #b0bec5; --silver-bright: #cfd8dc; --silver-dim: rgba(176,190,197,0.10);
+    --gold: #d4af37; --gold-dim: rgba(212,175,55,0.10);
+    --green: #3fb950; --green-dim: rgba(63,185,80,0.10);
+    --red: #f85149; --purple: #a78bfa; --purple-dim: rgba(167,139,250,0.10);
+    --cyan: #22d3ee; --cyan-dim: rgba(34,211,238,0.10); --orange: #ef9000;
+    --code-bg: #060608; --code-text: #c8d0dc;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow: hidden; }
+  body::after {
+    content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: 0.035;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  }
+  .deck { height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  .slide {
+    height: 100dvh; scroll-snap-align: start; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(32px,5vh,56px) clamp(40px,5.5vw,96px); isolation: isolate;
+  }
+  .slide__display { font-family: var(--font-display); font-size: clamp(56px,10vw,120px); font-weight: 400; letter-spacing: -1px; line-height: 0.92; }
+  .slide__heading { font-family: var(--font-display); font-size: clamp(34px,5.6vw,66px); font-weight: 400; letter-spacing: -0.5px; line-height: 1.08; }
+  .slide__body { font-family: var(--font-editorial); font-size: clamp(18px,2vw,23px); font-weight: 400; line-height: 1.5; color: var(--text-dim); letter-spacing: 0.01em; }
+  .slide__label { font-family: var(--font-mono); font-size: clamp(11px,1.1vw,14px); font-weight: 600; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 16px; position: relative; padding-left: 20px; }
+  .slide__label::before { content: ''; position: absolute; left: 0; top: 50%; width: 8px; height: 8px; transform: translateY(-50%) rotate(45deg); background: var(--accent); opacity: 0.7; box-shadow: 0 0 8px rgba(74,158,255,0.4); }
+  .act-marker { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 8px; opacity: 0.7; position: relative; padding-left: 32px; }
+  .act-marker::before { content: ''; position: absolute; left: 0; top: 50%; width: 22px; height: 1px; background: linear-gradient(90deg, transparent, var(--text-dim)); }
+
+  .gradient-text { background: linear-gradient(135deg, var(--accent) 0%, var(--silver-bright) 50%, #fff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 24px rgba(74,158,255,0.08)); }
+  .gradient-gold { background: linear-gradient(135deg, var(--gold) 0%, #fff 50%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 24px rgba(212,175,55,0.10)); }
+  .gradient-green { background: linear-gradient(135deg, var(--green) 0%, #fff 60%, var(--green) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-purple { background: linear-gradient(135deg, var(--purple) 0%, #fff 55%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-red { background: linear-gradient(135deg, var(--red) 0%, #fff 60%, var(--orange) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  .slide--title { justify-content: center; align-items: center; text-align: center; background-image: radial-gradient(ellipse at 50% 30%, rgba(74,158,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(212,175,55,0.04) 0%, transparent 40%); }
+  .slide--silent { justify-content: center; align-items: center; text-align: center; }
+  .slide--quote { justify-content: center; align-items: center; text-align: center; background-image: radial-gradient(ellipse at 50% 50%, rgba(176,190,197,0.06) 0%, transparent 60%); }
+  .slide::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+    background-image: radial-gradient(ellipse 55% 40% at 12% 8%, rgba(74,158,255,0.04) 0%, transparent 55%), radial-gradient(ellipse 45% 40% at 88% 92%, rgba(176,190,197,0.028) 0%, transparent 55%);
+  }
+  .slide--title::before, .slide--silent::before, .slide--quote::before { display: none; }
+
+  .hero-badge { display: inline-block; background: var(--accent); color: #000; font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; padding: 7px 18px; border-radius: 5px; box-shadow: 0 6px 22px rgba(74,158,255,0.4), 0 0 0 1px rgba(74,158,255,0.6), inset 0 1px 0 rgba(255,255,255,0.3); margin-bottom: 36px; }
+  .hero-badge--purple { background: var(--purple); box-shadow: 0 6px 22px rgba(167,139,250,0.4), 0 0 0 1px rgba(167,139,250,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .hero-badge--gold { background: var(--gold); box-shadow: 0 6px 22px rgba(212,175,55,0.4), 0 0 0 1px rgba(212,175,55,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .hero-badge--inline { font-size: 9px; letter-spacing: 2px; padding: 4px 11px; margin-bottom: 0; }
+  .hero-byline { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; }
+  .hero-date { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 8px; opacity: 0.6; }
+  .hero-quote { font-family: var(--font-editorial); font-style: italic; font-size: clamp(28px,3.4vw,48px); line-height: 1.25; color: var(--text); max-width: 1300px; margin: 0 auto; letter-spacing: -0.01em; }
+  .hero-quote::before { content: '\201C'; color: var(--accent); margin-right: 4px; }
+  .hero-quote::after { content: '\201D'; color: var(--accent); margin-left: 4px; }
+  .hero-cite { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 36px; }
+
+  /* ── PASS META (engine / in / out chips) — reused as classification chips ── */
+  .pass-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .pass-meta.center { justify-content: center; }
+  .pass-meta .mchip {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 7px 15px; border-radius: 6px;
+    color: #000; background: var(--silver-bright);
+    box-shadow: 0 6px 18px rgba(176,190,197,0.28), 0 0 0 1px rgba(176,190,197,0.5), inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .pass-meta .mchip b { color: #000; font-weight: 800; }
+  .pass-meta .mchip.engine { background: var(--accent); box-shadow: 0 6px 18px rgba(74,158,255,0.4), 0 0 0 1px rgba(74,158,255,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pass-meta .mchip.in     { background: var(--cyan);   box-shadow: 0 6px 18px rgba(34,211,238,0.4), 0 0 0 1px rgba(34,211,238,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pass-meta .mchip.out    { background: var(--gold);   box-shadow: 0 6px 18px rgba(212,175,55,0.4), 0 0 0 1px rgba(212,175,55,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pass-meta .mchip.sess   { background: var(--purple); box-shadow: 0 6px 18px rgba(167,139,250,0.4), 0 0 0 1px rgba(167,139,250,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pass-meta .mchip.gate   { background: var(--green);  box-shadow: 0 6px 18px rgba(63,185,80,0.4), 0 0 0 1px rgba(63,185,80,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pass-meta .mchip.danger { background: var(--red);    box-shadow: 0 6px 18px rgba(248,81,73,0.4), 0 0 0 1px rgba(248,81,73,0.6), inset 0 1px 0 rgba(255,255,255,0.3); }
+
+  .gate-panel { border: 1px solid rgba(63,185,80,0.3); border-radius: 14px; padding: 20px 24px; background: linear-gradient(180deg, rgba(63,185,80,0.06), rgba(63,185,80,0.01)); position: relative; margin-top: 24px; max-width: 1400px; }
+  .gate-panel::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px; background: var(--green); border-radius: 3px 0 0 3px; }
+  .gate-panel .gate-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--green); text-transform: uppercase; margin-bottom: 6px; }
+  .gate-panel .gate-b { font-family: var(--font-editorial); font-size: 16px; color: var(--text); line-height: 1.45; }
+  .gate-panel .gate-b b { color: var(--green); font-style: normal; }
+
+  /* ── VERSUS (in-scope vs out-of-scope) ── */
+  .versus { display: grid; grid-template-columns: 1fr 56px 1fr; align-items: stretch; gap: 0; margin-top: 10px; }
+  .vs-side { border: 1px solid var(--border); border-radius: 16px; padding: 24px 26px; background: var(--surface); }
+  .vs-side.a { border-color: rgba(63,185,80,0.3); background: linear-gradient(180deg, rgba(63,185,80,0.05), rgba(63,185,80,0.01)); }
+  .vs-side.b { border-color: rgba(110,122,140,0.3); background: linear-gradient(180deg, rgba(110,122,140,0.05), rgba(110,122,140,0.01)); }
+  .vs-side .vs-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .vs-side.a .vs-tag { color: var(--green); } .vs-side.b .vs-tag { color: var(--text-dim); }
+  .vs-side .vs-title { font-family: var(--font-display); font-size: 32px; color: var(--text); line-height: 1.05; margin-bottom: 16px; }
+  .vs-side ul { list-style: none; padding: 0; }
+  .vs-side li { font-family: var(--font-body); font-size: 15px; color: var(--text); padding: 6px 0 6px 22px; position: relative; line-height: 1.4; }
+  .vs-side li::before { content: '\25b8'; position: absolute; left: 0; }
+  .vs-side.a li::before { color: var(--green); } .vs-side.b li::before { color: var(--text-dim); }
+  .vs-mid { display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 28px; color: var(--text-dim); }
+
+  /* ── invariant cards ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .fcard { background: linear-gradient(180deg, rgba(74,158,255,0.05), rgba(74,158,255,0.008)); border: 1px solid rgba(74,158,255,0.22); border-radius: 14px; padding: 22px; position: relative; overflow: hidden; }
+  .fcard::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.8; }
+  .fcard .ic { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .fcard h3 { font-family: var(--font-display); font-size: 26px; color: var(--text); line-height: 1.05; margin-bottom: 8px; }
+  .fcard p { font-family: var(--font-editorial); font-size: 15px; color: var(--text-dim); line-height: 1.45; }
+  .fcard .bignum { font-family: var(--font-display); font-size: clamp(40px,4.2vw,56px); line-height: 1; color: var(--text); margin-bottom: 6px; }
+  .fcard.gold { border-color: rgba(212,175,55,0.3); background: linear-gradient(180deg, rgba(212,175,55,0.06), rgba(212,175,55,0.01)); } .fcard.gold::before { background: linear-gradient(90deg, transparent, var(--gold), transparent); } .fcard.gold .ic { color: var(--gold); }
+  .fcard.green { border-color: rgba(63,185,80,0.3); background: linear-gradient(180deg, rgba(63,185,80,0.06), rgba(63,185,80,0.01)); } .fcard.green::before { background: linear-gradient(90deg, transparent, var(--green), transparent); } .fcard.green .ic { color: var(--green); }
+  .fcard.purple { border-color: rgba(167,139,250,0.3); background: linear-gradient(180deg, rgba(167,139,250,0.07), rgba(167,139,250,0.01)); } .fcard.purple::before { background: linear-gradient(90deg, transparent, var(--purple), transparent); } .fcard.purple .ic { color: var(--purple); }
+  .fcard.red { border-color: rgba(248,81,73,0.3); background: linear-gradient(180deg, rgba(248,81,73,0.06), rgba(248,81,73,0.01)); } .fcard.red::before { background: linear-gradient(90deg, transparent, var(--red), transparent); } .fcard.red .ic { color: var(--red); }
+
+  .step-callout { margin-top: 24px; padding: 16px 22px; border-radius: 12px; border: 1px solid var(--border-bright); background: var(--surface); position: relative; max-width: 1500px; }
+  .step-callout::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--accent); border-radius: 3px 0 0 3px; }
+  .step-callout .so-what { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2.5px; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .step-callout .so-what-body { font-family: var(--font-editorial); font-size: 16px; color: var(--text); line-height: 1.45; }
+  .step-callout.purple::before { background: var(--purple); } .step-callout.purple .so-what { color: var(--purple); }
+  .step-callout.gold::before { background: var(--gold); } .step-callout.gold .so-what { color: var(--gold); }
+  .step-callout.green::before { background: var(--green); } .step-callout.green .so-what { color: var(--green); }
+  .step-callout.red::before { background: var(--red); } .step-callout.red .so-what { color: var(--red); }
+
+  /* ── data table (performance gap / cost / requirements) ── */
+  .dtable { width: 100%; border-collapse: collapse; max-width: 1540px; font-family: var(--font-body); }
+  .dtable thead th { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border-bright); font-weight: 700; }
+  .dtable thead th.num { text-align: right; }
+  .dtable tbody td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text); vertical-align: middle; }
+  .dtable tbody td.num { text-align: right; font-family: var(--font-mono); font-size: 14px; }
+  .dtable tbody tr:last-child td { border-bottom: none; }
+  .dtable .metric-name { font-weight: 600; }
+  .dtable .metric-sub { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; margin-top: 2px; }
+  .dtable .cur { color: var(--red); font-weight: 700; }
+  .dtable .tgt { color: var(--green); font-weight: 700; }
+  .dtable .gap { color: var(--gold); font-weight: 700; }
+  .dtable tfoot td { padding: 14px 16px; border-top: 2px solid var(--border-bright); font-size: 16px; }
+  .dtable tfoot .total-label { font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .dtable tfoot .total-val { text-align: right; font-family: var(--font-display); font-size: 30px; }
+
+  .pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+  .pill.kpi { color: var(--cyan); border: 1px solid rgba(34,211,238,0.35); background: rgba(34,211,238,0.07); }
+
+  /* ── success rail (current → target) ── */
+  .rail-row { display: grid; grid-template-columns: 1.1fr auto 1fr auto 1fr; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); max-width: 1540px; }
+  .rail-row:last-child { border-bottom: none; }
+  .rail-row .rail-metric { font-family: var(--font-body); font-size: 15px; font-weight: 600; color: var(--text); }
+  .rail-row .rail-metric small { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); font-weight: 400; letter-spacing: 0.5px; margin-top: 2px; }
+  .rail-row .rail-cur { font-family: var(--font-mono); font-size: 17px; color: var(--red); font-weight: 700; text-align: right; }
+  .rail-row .rail-arrow { color: var(--text-dim); font-size: 18px; text-align: center; }
+  .rail-row .rail-tgt { font-family: var(--font-mono); font-size: 17px; color: var(--green); font-weight: 700; }
+  .rail-row .rail-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); text-align: right; }
+
+  .deck-counter { position: fixed; bottom: 20px; right: 24px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); z-index: 100; letter-spacing: 2px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: rgba(8,8,10,0.75); }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- S01 — COVER -->
+  <section class="slide slide--title">
+    <span class="hero-badge">BUSINESS REQUIREMENTS DOCUMENT · INTERNAL / CONFIDENTIAL</span>
+    <h1 class="slide__display gradient-text" style="font-size: clamp(54px,10vw,128px); letter-spacing:-2.5px; margin-bottom:24px;">Analytical Backbone Initiative</h1>
+    <div class="slide__heading" style="color: var(--text); max-width:1280px; margin-bottom:28px;">
+      Separating <span class="gradient-gold">analytics</span> from the <span class="gradient-text">storefront</span> —<br/>
+      so insight stops competing with the order.
+    </div>
+    <p class="slide__body" style="max-width:980px;">
+      The business case for a dedicated analytical platform: the problem, its cost, and the
+      verifiable outcomes this initiative must deliver. The "what," not the "how."
+    </p>
+    <div class="hero-byline">Prepared for the Executive Steering Committee</div>
+    <div class="hero-date">FY2026 · Data &amp; Platform · Classification: Internal / Confidential</div>
+  </section>
+
+  <!-- S02 — EXECUTIVE SUMMARY -->
+  <section class="slide">
+    <div class="act-marker">SECTION 01 · FOR THE COMMITTEE</div>
+    <div class="slide__label">EXECUTIVE SUMMARY · SITUATION · PROBLEM · ASK</div>
+    <h2 class="slide__heading" style="margin-bottom:18px; max-width:1500px;">
+      One database runs the store <span class="gradient-text">and</span> the reports. <span class="gradient-red">Both are losing.</span>
+    </h2>
+    <p class="slide__body" style="margin-bottom:24px; max-width:1560px;">
+      We are a ~$500M GMV operator processing 50,000 orders a day, 75,000 at peak. Today a single
+      operational database serves the storefront and every analytical query at once. The two
+      workloads contend: heavy analytics lock resources during peak and slow order processing, while
+      relentless write traffic makes reporting crawl. The cost of leaving this unsolved is ~$2.08M
+      a year — and a data team spending most of its capacity firefighting, not building.
+    </p>
+    <div class="grid-3" style="max-width:1560px;">
+      <div class="fcard"><div class="ic">SITUATION</div><h3>$500M GMV, one database</h3><p>50K orders/day (75K peak), AOV $85, 28% gross margin, served by a data team of 8 — all on one shared system.</p></div>
+      <div class="fcard red"><div class="ic">PROBLEM</div><h3>Workloads contend</h3><p>Analytics and the storefront fight for the same resources. Reports take minutes; peak order processing slows under analytical load.</p></div>
+      <div class="fcard green"><div class="ic">THE ASK</div><h3>Separate the two</h3><p>Give analytics its own home so it stops contending with the store — faster insight, peak isolation, less operational toil.</p></div>
+    </div>
+    <div class="step-callout"><div class="so-what">THE DECISION REQUESTED</div><div class="so-what-body">Approve an initiative to <b style="color:var(--text)">isolate the analytical workload from the transactional one</b>. This document defines the problem and the verifiable outcomes; the solution design follows as a separate technical specification.</div></div>
+  </section>
+
+  <!-- S03 — THE CONTENTION PROBLEM -->
+  <section class="slide">
+    <div class="act-marker">SECTION 02 · THE CORE PROBLEM</div>
+    <div class="slide__label">CONTENTION · TWO WORKLOADS, ONE DATABASE</div>
+    <h2 class="slide__heading" style="margin-bottom:14px; max-width:1500px;">
+      Two jobs that <span class="gradient-red">don't share well</span> sharing one machine.
+    </h2>
+    <p class="slide__body" style="margin-bottom:22px; max-width:1560px;">
+      The storefront needs thousands of tiny, instant writes. Analytics needs to scan months of
+      history in one sweep. Run them on the same database and each degrades the other — exactly when
+      it matters most, at peak.
+    </p>
+    <div class="grid-2" style="max-width:1560px;">
+      <div class="fcard"><div class="ic">WORKLOAD A · THE STOREFRONT</div><h3>Transactions</h3><p>Up to 75,000 orders/day at peak — high-frequency writes, sub-second reads. Every checkout, payment, and inventory update competes for the same locks.</p></div>
+      <div class="fcard purple"><div class="ic">WORKLOAD B · ANALYTICS</div><h3>Reporting &amp; insight</h3><p>Large historical scans across the full order and payment history. Each report is a heavy, long-running read over the same tables the store is writing to.</p></div>
+    </div>
+    <div class="grid-2" style="max-width:1560px; margin-top:20px;">
+      <div class="fcard red"><div class="ic">WHEN THEY COLLIDE</div><h3>The store slows</h3><p>Analytical scans hold resources during peak — order processing waits behind reporting, putting revenue at risk in the busiest hours.</p></div>
+      <div class="fcard red"><div class="ic">WHEN THEY COLLIDE</div><h3>The reports crawl</h3><p>Relentless write load starves analytics — a query that should take seconds takes minutes, so the business decides on yesterday's numbers.</p></div>
+    </div>
+    <div class="step-callout red"><div class="so-what">THE ONE-LINE PROBLEM</div><div class="so-what-body">A transactional system and an analytical system have fundamentally different needs — and forcing them onto one database means <b style="color:var(--text)">neither gets what it requires.</b></div></div>
+  </section>
+
+  <!-- S04 — COST OF THE STATUS QUO -->
+  <section class="slide">
+    <div class="act-marker">SECTION 03 · WHAT INACTION COSTS</div>
+    <div class="slide__label">COST OF THE STATUS QUO · ~$2.079M / YEAR</div>
+    <h2 class="slide__heading" style="margin-bottom:16px; max-width:1500px;">
+      Doing nothing is <span class="gradient-gold">not free.</span> It costs <span class="gradient-red">$2.08M a year.</span>
+    </h2>
+    <table class="dtable">
+      <thead>
+        <tr><th>Cost line</th><th>What it is</th><th class="num">Annual</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="metric-name">Database cluster</td><td>Oversized shared cluster, scaled to survive contention</td><td class="num">$145,000</td></tr>
+        <tr><td class="metric-name">Storage</td><td>Operational + analytical history on premium transactional storage</td><td class="num">$28,000</td></tr>
+        <tr><td class="metric-name">Data engineering team (8)</td><td>Fully-loaded cost of the 8-person data team</td><td class="num">$1,160,000</td></tr>
+        <tr><td class="metric-name">Maintenance &amp; incident response</td><td>60% of team capacity lost to firefighting, not new capability</td><td class="num">$696,000</td></tr>
+        <tr><td class="metric-name">On-call</td><td>Rotation coverage for contention-driven incidents</td><td class="num">$32,000</td></tr>
+        <tr><td class="metric-name">Emergency vendor support</td><td>Reactive expert help when incidents exceed the team</td><td class="num">$18,000</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td class="total-label" colspan="2">Total annual cost of the status quo</td><td class="total-val gradient-red">$2,079,000</td></tr>
+      </tfoot>
+    </table>
+    <div class="step-callout gold"><div class="so-what">THE HIDDEN LINE</div><div class="so-what-body">The largest controllable loss is <b style="color:var(--text)">~$696K/year of engineering capacity</b> — 60% of an 8-person team spent maintaining a system that fights itself, instead of building what the business needs next.</div></div>
+  </section>
+
+  <!-- S05 — PERFORMANCE GAP -->
+  <section class="slide">
+    <div class="act-marker">SECTION 04 · THE MEASURED GAP</div>
+    <div class="slide__label">PERFORMANCE GAP · CURRENT vs TARGET</div>
+    <h2 class="slide__heading" style="margin-bottom:16px; max-width:1500px;">
+      Where we are today versus where the business <span class="gradient-text">needs to be.</span>
+    </h2>
+    <table class="dtable">
+      <thead>
+        <tr><th>Metric</th><th class="num">Current</th><th class="num">Target</th><th class="num">Gap</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="metric-name">Query latency <span class="metric-sub">p95 — typical analytical query</span></td><td class="num"><span class="cur">12 min</span></td><td class="num"><span class="tgt">&lt; 5 sec</span></td><td class="num"><span class="gap">144&times; slower</span></td></tr>
+        <tr><td class="metric-name">Query latency <span class="metric-sub">p99 — worst-case query</span></td><td class="num"><span class="cur">28 min</span></td><td class="num"><span class="tgt">&lt; 15 sec</span></td><td class="num"><span class="gap">112&times; slower</span></td></tr>
+        <tr><td class="metric-name">Data freshness <span class="metric-sub">lag from event to reportable</span></td><td class="num"><span class="cur">24 hr</span></td><td class="num"><span class="tgt">near-real-time</span></td><td class="num"><span class="gap">~1 day behind</span></td></tr>
+        <tr><td class="metric-name">Availability <span class="metric-sub">analytical service uptime</span></td><td class="num"><span class="cur">97.8%</span></td><td class="num"><span class="tgt">99.5%</span></td><td class="num"><span class="gap">+1.7 pts</span></td></tr>
+        <tr><td class="metric-name">Incident MTTR <span class="metric-sub">mean time to resolve</span></td><td class="num"><span class="cur">5.2 hr</span></td><td class="num"><span class="tgt">30 min</span></td><td class="num"><span class="gap">10.4&times; faster</span></td></tr>
+        <tr><td class="metric-name">Incident frequency <span class="metric-sub">contention-driven, per month</span></td><td class="num"><span class="cur">2.8 / mo</span></td><td class="num"><span class="tgt">&lt; 0.5 / mo</span></td><td class="num"><span class="gap">~6&times; fewer</span></td></tr>
+      </tbody>
+    </table>
+    <div class="step-callout red"><div class="so-what">THE HEADLINE NUMBER</div><div class="so-what-body">A core analytical query is <b style="color:var(--text)">144&times; slower than it should be</b> — 12 minutes where the business needs under 5 seconds. The gap is not a tuning problem; it is structural.</div></div>
+  </section>
+
+  <!-- S06 — BUSINESS IMPACT -->
+  <section class="slide">
+    <div class="act-marker">SECTION 05 · WHY IT MATTERS</div>
+    <div class="slide__label">BUSINESS IMPACT · FINANCIAL · OPERATIONAL · STRATEGIC</div>
+    <h2 class="slide__heading" style="margin-bottom:18px; max-width:1500px;">
+      The cost isn't just compute. It's <span class="gradient-gold">capacity, speed, and trust.</span>
+    </h2>
+    <div class="grid-3" style="max-width:1560px;">
+      <div class="fcard gold">
+        <div class="ic">FINANCIAL</div>
+        <div class="bignum gradient-gold">$2.08M</div>
+        <h3 style="font-size:22px;">Annual drain</h3>
+        <p>Direct run-cost plus ~$696K of engineering capacity lost to maintenance — money spent keeping a strained system alive rather than growing the business.</p>
+      </div>
+      <div class="fcard purple">
+        <div class="ic">OPERATIONAL</div>
+        <div class="bignum gradient-purple">60–70%</div>
+        <h3 style="font-size:22px;">Team firefighting</h3>
+        <p>Most of the data team's time goes to incident response and maintenance. 2.8 incidents a month at 5.2h MTTR keep the best engineers reactive, not creative.</p>
+      </div>
+      <div class="fcard">
+        <div class="ic">STRATEGIC</div>
+        <div class="bignum gradient-text">24 hr</div>
+        <h3 style="font-size:22px;">Decisions on stale data</h3>
+        <p>A full day of data lag means the business steers on yesterday. Slow, late insight erodes trust in the numbers and caps every data-driven initiative behind it.</p>
+      </div>
+    </div>
+    <div class="step-callout purple"><div class="so-what">THE COMPOUNDING COST</div><div class="so-what-body">Each dimension feeds the next: contention drives incidents, incidents consume the team, a consumed team can't modernize — so <b style="color:var(--text)">the problem deepens the longer it stands.</b></div></div>
+  </section>
+
+  <!-- S07 — REQUIREMENTS & ACCEPTANCE CRITERIA -->
+  <section class="slide">
+    <div class="act-marker">SECTION 06 · WHAT "DONE" MEANS</div>
+    <div class="slide__label">REQUIREMENTS · EACH VERIFIABLE · EACH TIED TO A KPI</div>
+    <h2 class="slide__heading" style="margin-bottom:14px; max-width:1500px;">
+      Requirements that are <span class="gradient-green">measurable</span>, or they don't count.
+    </h2>
+    <table class="dtable">
+      <thead>
+        <tr><th>#</th><th>Requirement (business outcome)</th><th>Acceptance criterion · KPI (current &rarr; target)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">R1</td><td class="metric-name">Isolate analytics from the storefront at peak</td><td>At 75K orders/day, analytical load causes <span class="tgt">zero</span> storefront slowdown <span class="metric-sub">contention incidents 2.8/mo &rarr; &lt; 0.5/mo</span></td></tr>
+        <tr><td class="num">R2</td><td class="metric-name">Deliver interactive query speed</td><td>Analytical query p95 <span class="cur">12 min</span> &rarr; <span class="tgt">&lt; 5 sec</span>; p99 <span class="cur">28 min</span> &rarr; <span class="tgt">&lt; 15 sec</span></td></tr>
+        <tr><td class="num">R3</td><td class="metric-name">Make data fresh enough to act on</td><td>Event-to-reportable lag <span class="cur">24 hr</span> &rarr; <span class="tgt">near-real-time</span></td></tr>
+        <tr><td class="num">R4</td><td class="metric-name">Raise analytical availability</td><td>Service uptime <span class="cur">97.8%</span> &rarr; <span class="tgt">99.5%</span></td></tr>
+        <tr><td class="num">R5</td><td class="metric-name">Resolve incidents faster</td><td>Incident MTTR <span class="cur">5.2 hr</span> &rarr; <span class="tgt">30 min</span></td></tr>
+        <tr><td class="num">R6</td><td class="metric-name">Return engineering capacity to the business</td><td>Maintenance share of team capacity <span class="cur">60–70%</span> &rarr; <span class="tgt">&lt; 30%</span></td></tr>
+      </tbody>
+    </table>
+    <div class="step-callout green"><div class="so-what">THE ACCEPTANCE RULE</div><div class="so-what-body">Every requirement names a number we measure today and a number we must reach. <b style="color:var(--text)">If it can't be verified against a KPI, it isn't a requirement</b> — it's a wish.</div></div>
+  </section>
+
+  <!-- S08 — IN SCOPE vs OUT OF SCOPE -->
+  <section class="slide">
+    <div class="act-marker">SECTION 07 · THE BOUNDARY</div>
+    <div class="slide__label">SCOPE · WHAT THIS INITIATIVE WILL AND WILL NOT DO</div>
+    <h2 class="slide__heading" style="margin-bottom:16px; max-width:1500px;">
+      Solve the contention problem. <span class="gradient-purple">Nothing more, this phase.</span>
+    </h2>
+    <div class="versus">
+      <div class="vs-side a">
+        <div class="vs-tag">IN SCOPE · THIS PHASE</div>
+        <div class="vs-title">Separate the workloads</div>
+        <ul>
+          <li>Isolate analytics from the transactional storefront</li>
+          <li>Interactive query performance on analytical data (R2)</li>
+          <li>Fresh, trustworthy data for reporting (R3)</li>
+          <li>Higher availability and faster incident recovery (R4, R5)</li>
+          <li>Reclaim data-engineering capacity from maintenance (R6)</li>
+        </ul>
+      </div>
+      <div class="vs-mid">vs</div>
+      <div class="vs-side b">
+        <div class="vs-tag">OUT OF SCOPE · FUTURE PHASE</div>
+        <div class="vs-title">Deferred, by design</div>
+        <ul>
+          <li>Customer personalization &amp; recommendation systems</li>
+          <li>Real-time machine-learning / predictive models</li>
+          <li>New customer-facing product features</li>
+          <li>Replatforming the transactional storefront itself</li>
+          <li>Net-new external data sources beyond today's system</li>
+        </ul>
+      </div>
+    </div>
+    <div class="step-callout purple"><div class="so-what">WHY THE LINE SITS HERE</div><div class="so-what-body">Personalization and real-time ML depend on a fast, reliable analytical foundation that does not exist yet. <b style="color:var(--text)">This initiative builds that foundation first</b> — and is evaluated only on the contention outcomes above.</div></div>
+  </section>
+
+  <!-- S09 — SUCCESS METRICS RAIL -->
+  <section class="slide">
+    <div class="act-marker">SECTION 08 · HOW WE'LL KNOW IT WORKED</div>
+    <div class="slide__label">SUCCESS METRICS · CURRENT &rarr; TARGET</div>
+    <h2 class="slide__heading" style="margin-bottom:16px; max-width:1500px;">
+      One scorecard. <span class="gradient-green">Every line moves</span>, or we're not done.
+    </h2>
+    <div style="max-width:1560px;">
+      <div class="rail-row">
+        <div class="rail-metric">Analytical query latency <small>p95</small></div>
+        <div class="rail-cur">12 min</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">&lt; 5 sec</div>
+        <div class="rail-tag">144&times; faster</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Worst-case query latency <small>p99</small></div>
+        <div class="rail-cur">28 min</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">&lt; 15 sec</div>
+        <div class="rail-tag">112&times; faster</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Data freshness <small>event → reportable</small></div>
+        <div class="rail-cur">24 hr</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">near-real-time</div>
+        <div class="rail-tag">~1 day reclaimed</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Service availability <small>analytical uptime</small></div>
+        <div class="rail-cur">97.8%</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">99.5%</div>
+        <div class="rail-tag">+1.7 pts</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Incident MTTR <small>time to resolve</small></div>
+        <div class="rail-cur">5.2 hr</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">30 min</div>
+        <div class="rail-tag">10.4&times; faster</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Incident frequency <small>contention-driven / mo</small></div>
+        <div class="rail-cur">2.8 / mo</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">&lt; 0.5 / mo</div>
+        <div class="rail-tag">~6&times; fewer</div>
+      </div>
+      <div class="rail-row">
+        <div class="rail-metric">Team capacity on maintenance <small>vs new capability</small></div>
+        <div class="rail-cur">60–70%</div><div class="rail-arrow">&rarr;</div><div class="rail-tgt">&lt; 30%</div>
+        <div class="rail-tag">capacity reclaimed</div>
+      </div>
+    </div>
+    <div class="step-callout green"><div class="so-what">THE BAR FOR SUCCESS</div><div class="so-what-body">Success is not "it feels faster." Success is <b style="color:var(--text)">every line above hitting its target and holding through a 75K-order peak.</b></div></div>
+  </section>
+
+  <!-- S10 — CONSTRAINTS & ASSUMPTIONS -->
+  <section class="slide">
+    <div class="act-marker">SECTION 09 · THE GROUND RULES</div>
+    <div class="slide__label">CONSTRAINTS &amp; ASSUMPTIONS · WHAT WE'RE WORKING WITHIN</div>
+    <h2 class="slide__heading" style="margin-bottom:18px; max-width:1500px;">
+      What the solution must <span class="gradient-text">respect</span> — and what we take as given.
+    </h2>
+    <div class="grid-2" style="max-width:1560px;">
+      <div class="fcard">
+        <div class="ic">CONSTRAINT · NO DISRUPTION</div>
+        <h3>The store keeps running</h3>
+        <p>The transactional storefront cannot be slowed, paused, or risked. Any change must leave the order path untouched and be safe to roll back.</p>
+      </div>
+      <div class="fcard">
+        <div class="ic">CONSTRAINT · SAME TEAM</div>
+        <h3>Built by the team of 8</h3>
+        <p>Delivered within the existing 8-engineer data team and current budget envelope — the goal is to free capacity, not to grow headcount.</p>
+      </div>
+      <div class="fcard gold">
+        <div class="ic">ASSUMPTION · SOURCE OF TRUTH</div>
+        <h3>The store stays authoritative</h3>
+        <p>The transactional system remains the system of record for orders, customers, and payments. Analytics reads from it; it does not replace it.</p>
+      </div>
+      <div class="fcard gold">
+        <div class="ic">ASSUMPTION · STABLE DEMAND</div>
+        <h3>Today's volumes hold</h3>
+        <p>Planning baselines: ~50K orders/day, 75K at peak, $85 AOV, 28% margin. Material changes to these inputs would reopen the targets above.</p>
+      </div>
+    </div>
+    <div class="step-callout gold"><div class="so-what">THE FRAME</div><div class="so-what-body">This is a problem statement, not a design. <b style="color:var(--text)">It names the outcomes and the boundaries</b> — the technical "how" is delivered separately as a specification that answers this document.</div></div>
+  </section>
+
+  <!-- S11 — RECOMMENDATION / CLOSE -->
+  <section class="slide">
+    <div class="act-marker">SECTION 10 · THE RECOMMENDATION</div>
+    <div class="slide__label">RECOMMENDATION · APPROVE &amp; COMMISSION THE SOLUTION DESIGN</div>
+    <h2 class="slide__heading" style="margin-bottom:16px; max-width:1500px;">
+      Approve the initiative. <span class="gradient-green">Commission the design.</span>
+    </h2>
+    <p class="slide__body" style="margin-bottom:22px; max-width:1560px;">
+      The contention between the storefront and analytics is structural, measured, and costing the
+      business ~$2.08M a year plus most of its data-engineering capacity. We recommend the Steering
+      Committee approve this initiative to separate the two workloads, and commission a technical
+      specification that answers these requirements against the KPIs above.
+    </p>
+    <div class="grid-3" style="max-width:1560px;">
+      <div class="fcard red"><div class="ic">IF WE WAIT</div><h3>The drain continues</h3><p>~$2.08M/year persists, incidents compound, and the team stays trapped in maintenance — the gap widens, not narrows.</p></div>
+      <div class="fcard"><div class="ic">WHAT WE'RE ASKING</div><h3>Approve &amp; scope</h3><p>Endorse the outcomes in this BRD and authorize a solution design phase to meet R1–R6 against their KPIs.</p></div>
+      <div class="fcard green"><div class="ic">IF WE ACT</div><h3>Insight at the speed of the business</h3><p>Peak isolation, sub-5-second queries, fresh data, fewer incidents — and a data team building the future instead of defending the present.</p></div>
+    </div>
+    <div class="gate-panel"><div class="gate-h">THE DECISION REQUESTED</div><div class="gate-b">Approve the Analytical Backbone Initiative and commission the technical specification. <b>Success is defined, measurable, and tied to KPIs</b> — every requirement (R1–R6) will be verified current &rarr; target before this is called done.</div></div>
+  </section>
+
+  <!-- S12 — CLOSING STATEMENT -->
+  <section class="slide slide--quote">
+    <div class="act-marker" style="margin: 0 auto 24px;">ANALYTICAL BACKBONE INITIATIVE · THE ASK</div>
+    <p class="hero-quote">
+      The storefront and its analytics need different things from the same data. Give each its own
+      home, and both finally get what they need — <span style="color:var(--green)">the order, and the insight.</span>
+    </p>
+    <div class="hero-cite">Business Requirements Document · Internal / Confidential · For the Executive Steering Committee</div>
+  </section>
+
+</div>
+<div class="deck-counter">BRD · ANALYTICAL BACKBONE</div>
+<script>
+  const counter = document.querySelector('.deck-counter');
+  const slides = document.querySelectorAll('.slide');
+  const deck = document.querySelector('.deck');
+  function update() {
+    const i = Math.round(deck.scrollTop / window.innerHeight);
+    counter.textContent = `${String(i+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
+  }
+  deck.addEventListener('scroll', update); update();
+  window.__captureReady = true;
+</script>
+</body>
+</html>
