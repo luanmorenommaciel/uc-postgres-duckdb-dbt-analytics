@@ -1,11 +1,25 @@
-# uc-postgres-duckdb-dbt-analytics
+# Postgres → DuckDB Analytics Backbone
 
-The analytics **brownfield base** for an AI-native DataOps workshop. A high-volume
-e-commerce company runs its storefront and its analytics on one Postgres database;
-the two workloads fight for the same resources. This repo is the deterministic
-foundation that the rest of the platform is built on, live, during the workshop.
+A working **brownfield base** for an AI-native DataOps workshop — the deterministic
+foundation a full analytics platform gets built on top of, live, in front of an
+audience.
 
-What ships here is small and honest:
+The scenario is a familiar one. A high-volume e-commerce company runs both its
+storefront and its analytics on a single Postgres database, and the two workloads
+fight for the same resources: heavy analytical scans slow down order processing,
+and the transactional write load makes reporting crawl. The fix is to lift
+analytics off the operational database into a purpose-built store — which is
+exactly the seam this repo establishes.
+
+What's here today is a small, honest, end-to-end slice of that: a realistic
+Postgres source, a deterministic generator that can both seed clean data and inject
+real-world defects, and a one-step movement into DuckDB. It is intentionally a
+*starting point* — a system that already runs, so the workshop can extend it from a
+requirements document rather than from an empty directory. Everything is verified
+to work end to end (`make seed` → Postgres → `make land` → DuckDB, with exact row
+parity).
+
+What ships here:
 
 - a **Postgres** source schema (auto-applied on first boot),
 - a **deterministic seeder** that produces a clean, correlated baseline,
@@ -29,7 +43,7 @@ copies the business tables into `raw.*`; everything downstream reads the warehou
 graph LR
     G([make seed / inject]) --> P[(Postgres<br/>public.*)]
     P -->|make land · ATTACH read-only| W[(DuckDB<br/>raw.*)]
-    W --> D([transform / serve<br/>built live])
+    W --> D([transform / serve<br/>built on top])
     C[(Postgres<br/>_control.*)] -.never landed.- W
 ```
 
@@ -145,12 +159,31 @@ Two things make this realistic:
 Variables you can override on any `make` call: `CUSTOMERS`, `PRODUCTS`, `ORDERS`,
 `SEED`, `FAILURE`, `TRAFFIC`, `RECORD`.
 
-## What's intentionally NOT here yet (built live)
+## Current state
 
-This is the base. The following layers are added during the workshop and are
-deliberately absent so they can be built from first principles:
+This is a working brownfield base, not a skeleton. What runs today, verified end to
+end:
 
-- **dbt** — the Medallion (bronze/silver/gold) transformation over `raw.*`.
-- **FastAPI / MCP** — the intelligence layer that serves the warehouse.
-- **Detection / scoring** — whatever watches the backbone, diagnoses the injected
-  defects, and is scored against the `injected_incidents` ledger.
+- **A realistic Postgres source.** Four correlated business tables — `customers`,
+  `products`, `orders`, `payments` — under `public`, plus a fenced
+  `_control.injected_incidents` ledger. The schema is applied automatically when the
+  container boots.
+- **A deterministic seeder.** `make seed` produces a clean, internally consistent
+  baseline (orders never predate the customer, payment amounts match order totals,
+  `returned` orders are `refunded`) that is reproducible for a given `--seed`.
+- **A 14-mode defect generator.** Generic data-quality, schema, and availability
+  defects you can inject one at a time or stream continuously. Injection is silent by
+  default — the defect lands in the data, undeclared — with the ground-truth answer
+  key recorded to the fenced `_control` ledger only on `RECORD=1`.
+- **A Postgres → DuckDB transition.** `make land` `ATTACH`es Postgres read-only from
+  an embedded DuckDB file and copies the source into `raw.*`, preserving types and
+  defects and stamping lineage columns. This is the one bridge between the
+  operational and analytical halves, and it is strictly one-directional.
+
+Everything above is exercised by the `make` targets and confirmed working with exact
+row parity between Postgres and DuckDB (see the per-package
+[`src/README.md`](src/README.md) for the contracts and a verified-run walkthrough).
+
+This base is the launch point: from here, the platform is grown against a
+requirements document — adding the transformation, serving, and detection layers on
+top of a system that already runs — rather than from an empty repository.
