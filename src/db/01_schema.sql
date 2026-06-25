@@ -43,12 +43,20 @@ CREATE INDEX IF NOT EXISTS idx_orders_product_id  ON orders (product_id);
 CREATE INDEX IF NOT EXISTS idx_orders_ordered_at  ON orders (ordered_at);
 CREATE INDEX IF NOT EXISTS idx_payments_order_id  ON payments (order_id);
 
-CREATE TABLE IF NOT EXISTS injected_incidents (
+-- Ground-truth ledger lives in a fenced "_control" schema, NOT in public. The
+-- business tables (public.*) are all the analytics pipeline reads, so the source
+-- database looks exactly like real production: there is no incident table in the
+-- data anyone investigates. The answer key here is a facilitator-only artifact,
+-- written only when injection runs with --record / RECORD=1, and read only at the
+-- reveal (e.g. recurring_incident's repeat-offender count).
+CREATE SCHEMA IF NOT EXISTS _control;
+
+CREATE TABLE IF NOT EXISTS _control.injected_incidents (
     incident_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     failure_key   TEXT        NOT NULL,
     detail        TEXT        NOT NULL,
     injected_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_incidents_failure_key ON injected_incidents (failure_key);
-CREATE INDEX IF NOT EXISTS idx_incidents_injected_at ON injected_incidents (injected_at);
+CREATE INDEX IF NOT EXISTS idx_incidents_failure_key ON _control.injected_incidents (failure_key);
+CREATE INDEX IF NOT EXISTS idx_incidents_injected_at ON _control.injected_incidents (injected_at);

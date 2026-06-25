@@ -10,8 +10,9 @@ What ships here is small and honest:
 - a **Postgres** source schema (auto-applied on first boot),
 - a **deterministic seeder** that produces a clean, correlated baseline,
 - a **14-mode chaos generator** that injects generic data-quality, schema, and
-  availability defects (and can log ground truth to an `injected_incidents`
-  ledger), and
+  availability defects into the source — and can log ground truth to a fenced
+  `_control.injected_incidents` ledger that lives **outside** the `public`
+  business tables, and
 - a **transition step** (`src/transition`) that pulls Postgres into a **DuckDB**
   warehouse via `ATTACH`, giving you `raw.*` tables to transform downstream.
 
@@ -24,16 +25,20 @@ library backed by a single local file. There is no DuckDB server or container.
   src/gen ──inject──▶ ┌────────────┐   make land    ┌──────────────────────┐
   src/seed ──seed──▶  │  Postgres  │ ──ATTACH/copy─▶ │  DuckDB warehouse     │
                       │ (container)│                 │  raw.*  (embedded file)│
-                      └────────────┘                 └──────────────────────┘
-                            │
-                            └─ injected_incidents  (ground-truth ledger, opt-in)
+                      │  public.*  │                 └──────────────────────┘
+                      │  _control.*│ ◀── ground-truth ledger, opt-in, NEVER landed
+                      └────────────┘     (public.* is all the warehouse reads)
 ```
+
+The source `public` schema holds only the four business tables — it looks like a
+real production database, with no incident table to give the game away. The
+answer key lives in a separate `_control` schema the analytics never read.
 
 | Package          | Role |
 |------------------|------|
 | `src/db`         | Postgres connection + schema (`01_schema.sql`) |
 | `src/seed`       | Deterministic clean baseline (correlated synthetic data) |
-| `src/gen`        | 14-mode chaos generator + `injected_incidents` ledger |
+| `src/gen`        | 14-mode chaos generator + fenced `_control.injected_incidents` ledger |
 | `src/transition` | Postgres -> DuckDB `raw.*` movement via `ATTACH` (full refresh) |
 | `src/warehouse`  | The single DuckDB file + the connection contract |
 
@@ -57,19 +62,28 @@ make inject FAILURE=schema_drift # inject a defect (SILENT by default)
 make failures                    # list all 14 failure modes
 ```
 
-### Silent failures and the ledger
+### Silent failures and the fenced answer key
 
 Injection is **silent by default**: `make inject FAILURE=<key>` mutates the source
-but writes **nothing** to the `injected_incidents` ledger — the defect is in the
-data, undeclared, exactly as a real incident would arrive. To record ground truth
-(so a future detector can be scored against it), opt in:
+but writes **nothing** to the ledger — the defect lives only in the data,
+undeclared, exactly as a real incident would arrive. You investigate it the way an
+on-call engineer does: notice the numbers are off, then go digging. To record
+ground truth (so a future detector can be *scored* against it, not just sound
+plausible), opt in:
 
 ```bash
-make inject FAILURE=schema_drift RECORD=1   # also writes the injected_incidents row
+make inject FAILURE=schema_drift RECORD=1   # also writes _control.injected_incidents
 ```
 
-Keeping the default silent is deliberate: the ledger is the scoring oracle, and a
-detector that can already see the answer key proves nothing.
+Two things make this realistic:
+
+- **The answer key is fenced.** It lives in a separate `_control` schema, never in
+  `public`. The business tables the analytics read have no incident table — the
+  source looks exactly like production. `_control` is also never copied into the
+  DuckDB warehouse.
+- **Silent by default is deliberate.** The ledger is the scoring oracle (the sealed
+  envelope), opened only at the reveal. A detector that can already see the answer
+  key proves nothing.
 
 ## Make targets
 

@@ -121,7 +121,12 @@ def insert_order(conn: psycopg.Connection, columns: list[str], values: tuple) ->
 
 
 def record_incident(conn: psycopg.Connection, failure_key: str, detail: str) -> None:
-    """Append a ground-truth row to the ``injected_incidents`` ledger.
+    """Append a ground-truth row to the ``_control.injected_incidents`` ledger.
+
+    The ledger lives in the fenced ``_control`` schema, never in ``public``, so
+    the source database the analytics read stays free of any answer-key table.
+    Writing is opt-in (``--record`` / ``RECORD=1``) and the row is consulted only
+    at the reveal.
 
     Args:
         conn: An open PostgreSQL connection.
@@ -130,13 +135,17 @@ def record_incident(conn: psycopg.Connection, failure_key: str, detail: str) -> 
     """
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO injected_incidents (failure_key, detail) VALUES (%s, %s)",
+            "INSERT INTO _control.injected_incidents (failure_key, detail) VALUES (%s, %s)",
             (failure_key, detail),
         )
 
 
 def count_incidents(conn: psycopg.Connection, failure_key: str) -> int:
     """Count recorded incidents for a given defect key.
+
+    Reads the fenced ``_control.injected_incidents`` ledger; returns 0 when
+    injection has been running silently (the default), since nothing is recorded
+    unless ``--record`` / ``RECORD=1`` is passed.
 
     Args:
         conn: An open PostgreSQL connection.
@@ -146,7 +155,7 @@ def count_incidents(conn: psycopg.Connection, failure_key: str) -> int:
         The number of ledger rows recorded for ``failure_key``.
     """
     with conn.cursor() as cur:
-        cur.execute("SELECT count(*) FROM injected_incidents WHERE failure_key = %s", (failure_key,))
+        cur.execute("SELECT count(*) FROM _control.injected_incidents WHERE failure_key = %s", (failure_key,))
         return cur.fetchone()[0]
 
 
