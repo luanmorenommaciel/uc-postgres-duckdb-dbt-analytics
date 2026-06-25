@@ -46,8 +46,9 @@ Postgres is the operational source. `make land` runs `src/transition`, which
 ATTACHes Postgres read-only from DuckDB and copies the source tables into `raw.*`
 inside a single embedded DuckDB file (`src/warehouse/warehouse.duckdb` by default;
 override with `DUCKDB_DATABASE`). That warehouse file is the seam everything
-downstream reads from. See [`src/transition/README.md`](src/transition/README.md)
-and [`src/warehouse/README.md`](src/warehouse/README.md) for the details.
+downstream reads from. See [`src/README.md`](src/README.md) for the per-package
+deep dive — the schema, the landing contract, the warehouse contract, and the 14
+failure modes are all documented there.
 
 ## Quickstart
 
