@@ -1,0 +1,31 @@
+[project]
+name = "uc-postgres-duckdb-dbt-analytics"
+version = "0.1.0"
+description = "Postgres + DuckDB analytics backbone base: deterministic seeder, chaos generator, and landing into DuckDB via ATTACH"
+readme = "readme.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faker>=37",
+    "psycopg[binary]>=3.2",
+    "duckdb>=1.1",
+    "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "pytest>=8",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

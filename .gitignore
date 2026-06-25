@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp/
+# Warehouse: the single shared DuckDB file (DUCKDB_DATABASE default location)
+platform/warehouse/warehouse.duckdb
+platform/warehouse/warehouse.duckdb.wal
+.DS_Store
