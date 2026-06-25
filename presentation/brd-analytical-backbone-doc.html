@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Business Requirements Document — Analytical Backbone Initiative</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1d23; --ink-soft: #4a5160; --ink-faint: #8a93a3;
+    --rule: #e4e7ec; --rule-soft: #f0f2f5;
+    --accent: #1f6fd6; --accent-soft: #eaf2fc;
+    --gold: #9a7a10; --gold-soft: #fbf6e6;
+    --green: #1f7a3d; --green-soft: #ebf6ef;
+    --red: #c0392b; --red-soft: #fbeceb;
+    --purple: #6b4fb8; --purple-soft: #f1edfa;
+    --paper: #ffffff; --panel: #fafbfc;
+    --serif: 'Newsreader', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --mono: 'Fira Code', monospace;
+  }
+  @page { size: Letter; margin: 22mm 20mm 20mm 20mm; }
+  * { box-sizing: border-box; }
+  html { font-size: 10.5pt; }
+  body { font-family: var(--serif); color: var(--ink); background: var(--paper); margin: 0; line-height: 1.5; }
+
+  /* page-break helpers */
+  .page-break { break-before: page; }
+  h1, h2, h3 { break-after: avoid; }
+  table, .card, .callout { break-inside: avoid; }
+
+  /* typography */
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 30pt; line-height: 1.1; letter-spacing: -0.5px; margin: 0 0 6pt; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 17pt; line-height: 1.15; margin: 20pt 0 8pt; padding-bottom: 5pt; border-bottom: 1.5px solid var(--rule); color: var(--ink); }
+  h3 { font-family: var(--sans); font-weight: 700; font-size: 11pt; letter-spacing: 0.2px; margin: 14pt 0 5pt; color: var(--ink); }
+  p { margin: 0 0 8pt; }
+  .lead { font-size: 12pt; color: var(--ink-soft); line-height: 1.55; }
+  strong { font-weight: 600; color: var(--ink); }
+  em { font-style: italic; }
+  ul, ol { margin: 0 0 9pt; padding-left: 18pt; }
+  li { margin-bottom: 4pt; line-height: 1.45; }
+  .eyebrow { font-family: var(--mono); font-size: 8pt; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 6pt; }
+  .muted { color: var(--ink-faint); }
+  .mono { font-family: var(--mono); font-size: 9pt; }
+
+  /* cover */
+  .cover { min-height: 232mm; display: flex; flex-direction: column; }
+  .cover .top-rule { height: 6px; background: linear-gradient(90deg, var(--gold), var(--accent) 55%, var(--purple)); border-radius: 3px; margin-bottom: 26pt; }
+  .cover .classification { font-family: var(--mono); font-size: 8pt; letter-spacing: 2px; text-transform: uppercase; color: var(--red); border: 1px solid var(--red); border-radius: 4px; padding: 4pt 10pt; display: inline-block; }
+  .cover .spacer { flex: 1; }
+  .cover h1 { font-size: 38pt; margin-top: 18pt; }
+  .cover .subtitle { font-family: var(--serif); font-style: italic; font-size: 16pt; color: var(--ink-soft); margin: 4pt 0 28pt; }
+  .meta-grid { display: grid; grid-template-columns: max-content 1fr; gap: 5pt 18pt; font-family: var(--sans); font-size: 10pt; }
+  .meta-grid dt { font-weight: 700; color: var(--ink-soft); }
+  .meta-grid dd { margin: 0; color: var(--ink); }
+
+  /* TOC */
+  .toc { font-family: var(--sans); font-size: 10.5pt; }
+  .toc ol { list-style: none; padding: 0; counter-reset: toc; }
+  .toc li { counter-increment: toc; display: flex; align-items: baseline; padding: 4pt 0; border-bottom: 1px dotted var(--rule); }
+  .toc li::before { content: counter(toc) "."; font-family: var(--mono); font-weight: 600; color: var(--accent); width: 22pt; flex: 0 0 22pt; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 9.5pt; margin: 8pt 0 12pt; }
+  th { text-align: left; font-weight: 700; font-size: 8pt; letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink-soft); padding: 6pt 8pt; border-bottom: 1.5px solid var(--ink-soft); }
+  td { padding: 6pt 8pt; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: 1.5px solid var(--ink-soft); }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .t-red { color: var(--red); font-weight: 600; }
+  .t-green { color: var(--green); font-weight: 600; }
+  .t-gold { color: var(--gold); font-weight: 600; }
+  .total-row td { font-weight: 700; background: var(--panel); }
+
+  /* cards */
+  .cards { display: grid; gap: 10pt; margin: 10pt 0 12pt; }
+  .cards.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cards.c2 { grid-template-columns: 1fr 1fr; }
+  .card { border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10pt 12pt; background: var(--panel); }
+  .card.gold { border-left-color: var(--gold); } .card.green { border-left-color: var(--green); } .card.purple { border-left-color: var(--purple); } .card.red { border-left-color: var(--red); }
+  .card .ic { font-family: var(--mono); font-size: 7.5pt; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 4pt; }
+  .card.gold .ic { color: var(--gold); } .card.green .ic { color: var(--green); } .card.purple .ic { color: var(--purple); } .card.red .ic { color: var(--red); }
+  .card .ch { font-family: var(--sans); font-weight: 700; font-size: 10.5pt; margin-bottom: 3pt; color: var(--ink); }
+  .card p { font-size: 9.5pt; color: var(--ink-soft); margin: 0; line-height: 1.4; }
+
+  /* callout */
+  .callout { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 10pt 14pt; margin: 12pt 0; }
+  .callout.gold { border-color: var(--gold); background: var(--gold-soft); }
+  .callout.red { border-color: var(--red); background: var(--red-soft); }
+  .callout.green { border-color: var(--green); background: var(--green-soft); }
+  .callout .ct { font-family: var(--mono); font-size: 7.5pt; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 4pt; }
+  .callout.gold .ct { color: var(--gold); } .callout.red .ct { color: var(--red); } .callout.green .ct { color: var(--green); }
+  .callout p { margin: 0; font-size: 10.5pt; line-height: 1.45; }
+
+  /* two-col scope split */
+  .scope { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; margin: 10pt 0; }
+  .scope .col { border: 1px solid var(--rule); border-radius: 6px; padding: 11pt 13pt; }
+  .scope .col.in { border-top: 3px solid var(--green); }
+  .scope .col.out { border-top: 3px solid var(--ink-faint); }
+  .scope h3 { margin-top: 0; }
+  .scope.in h3 { color: var(--green); }
+
+  /* requirement rows */
+  .req { border: 1px solid var(--rule); border-radius: 6px; padding: 9pt 12pt; margin-bottom: 8pt; }
+  .req .rid { font-family: var(--mono); font-weight: 600; font-size: 8.5pt; color: var(--accent); }
+  .req .rt { font-family: var(--sans); font-weight: 700; font-size: 10.5pt; margin: 2pt 0 3pt; }
+  .req .rk { font-family: var(--mono); font-size: 8.5pt; color: var(--ink-soft); }
+  .req .rk b { color: var(--green); }
+
+  footer { position: running(foot); }
+  .docfoot { font-family: var(--mono); font-size: 7.5pt; color: var(--ink-faint); text-align: center; margin-top: 14pt; padding-top: 8pt; border-top: 1px solid var(--rule); }
+</style>
+</head>
+<body>
+
+<!-- ════════ COVER ════════ -->
+<section class="cover">
+  <div class="top-rule"></div>
+  <span class="classification">Internal · Confidential</span>
+  <div class="spacer"></div>
+  <div class="eyebrow">Business Requirements Document</div>
+  <h1>Analytical Backbone Initiative</h1>
+  <div class="subtitle">Separating transactional and analytical workloads to restore decision velocity and operational headroom.</div>
+  <dl class="meta-grid">
+    <dt>Prepared for</dt><dd>Executive Steering Committee</dd>
+    <dt>Prepared by</dt><dd>Finance &amp; Technology Leadership (CTO · CFO · VP Data &amp; Analytics)</dd>
+    <dt>Document type</dt><dd>BRD — for review and approval</dd>
+    <dt>Recommendation</dt><dd>Commission the solution design</dd>
+    <dt>Status</dt><dd>For consultant engagement</dd>
+  </dl>
+  <div class="spacer"></div>
+  <p class="muted mono" style="font-size:8pt;">This document states the business problem and the outcomes required of any solution. It deliberately specifies <strong>no technology and no architecture</strong> — those are the engagement's deliverables.</p>
+</section>
+
+<!-- ════════ TOC ════════ -->
+<section class="page-break">
+  <h2>Contents</h2>
+  <nav class="toc">
+    <ol>
+      <li>Executive Summary</li>
+      <li>The Problem — One Database, Two Jobs</li>
+      <li>The Cost of the Status Quo</li>
+      <li>The Performance Gap</li>
+      <li>Business Impact</li>
+      <li>Requirements &amp; Acceptance Criteria</li>
+      <li>Scope — In and Out</li>
+      <li>Success Metrics</li>
+      <li>Constraints &amp; Assumptions</li>
+      <li>Recommendation</li>
+    </ol>
+  </nav>
+</section>
+
+<!-- ════════ 1. EXEC SUMMARY ════════ -->
+<section class="page-break">
+  <h2>1 · Executive Summary</h2>
+  <p class="lead">We operate a high-volume e-commerce platform — roughly <strong>$500M in annual GMV</strong> across <strong>50,000 orders per day</strong> (75,000 at peak). A single PostgreSQL database serves both the storefront and analytics, and the two workloads now contend for the same resources. The result is slow insight, fragility under peak load, and an engineering team spending most of its time keeping the system alive rather than improving it.</p>
+
+  <h3>The situation</h3>
+  <p>Operational transactions and analytical queries share one database. As volume has grown, heavy analytical scans lock resources during peak traffic — degrading customer-facing order processing — while the transactional write load makes reporting crawl. This is an architectural mismatch, not a tuning problem.</p>
+
+  <h3>The ask</h3>
+  <p>Separate the two workloads so analytics no longer contends with the storefront: faster insight, isolation under peak, and a sharp reduction in operational toil. Every requirement in this document is stated as a verifiable outcome tied to a current → target metric. <strong>The cost of inaction is approximately $2.08M per year</strong> in run-rate plus the opportunity cost of a data team consumed by maintenance.</p>
+
+  <div class="callout gold">
+    <div class="ct">The one-line case</div>
+    <p>A core analytical query takes <strong>12 minutes</strong> where the business needs it in <strong>under 5 seconds</strong> — 144× too slow. The fix is structural separation, and it pays back inside a year.</p>
+  </div>
+</section>
+
+<!-- ════════ 2. THE PROBLEM ════════ -->
+<section class="page-break">
+  <h2>2 · The Problem — One Database, Two Jobs</h2>
+  <p>The same PostgreSQL instance is asked to do two fundamentally different jobs at once. They have opposite needs, and at our volume they actively interfere.</p>
+
+  <div class="cards c2">
+    <div class="card">
+      <div class="ic">Workload A · Operational</div>
+      <div class="ch">The storefront</div>
+      <p>Many small, fast writes — orders, payments, inventory. Needs low latency and predictable response, every second, especially at peak.</p>
+    </div>
+    <div class="card purple">
+      <div class="ic">Workload B · Analytical</div>
+      <div class="ch">Reporting &amp; insight</div>
+      <p>Few large, heavy reads — aggregations across history. Needs to scan a lot of data without a deadline pressing on each query.</p>
+    </div>
+  </div>
+
+  <h3>Where they collide</h3>
+  <div class="cards c2">
+    <div class="card red">
+      <div class="ic">Collision · Peak</div>
+      <div class="ch">Analytics degrades checkout</div>
+      <p>A heavy report run during peak traffic locks resources the storefront needs — slowing order processing exactly when volume is highest.</p>
+    </div>
+    <div class="card red">
+      <div class="ic">Collision · Freshness</div>
+      <div class="ch">Reporting can't keep up</div>
+      <p>The transactional write load and contention push analytics to a 24-hour batch cadence — decisions are made on yesterday's numbers.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="ct">The structural point</div>
+    <p>You cannot tune your way out of two workloads with opposite needs sharing one engine. The only durable fix is to give analytics its own lane.</p>
+  </div>
+</section>
+
+<!-- ════════ 3. COST ════════ -->
+<section class="page-break">
+  <h2>3 · The Cost of the Status Quo</h2>
+  <p>The current architecture carries roughly <strong>$2.08M of annual run-rate</strong>, much of it spent keeping a strained system running rather than advancing the business.</p>
+
+  <table>
+    <thead><tr><th>Category</th><th>Annual</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>PostgreSQL cluster (3-node, 2TB)</td><td class="num">$145,000</td><td class="muted">On-prem + cloud hybrid</td></tr>
+      <tr><td>Storage &amp; backup</td><td class="num">$28,000</td><td class="muted">Redundant, daily backups</td></tr>
+      <tr><td>Data engineers (8 FTE, loaded)</td><td class="num">$1,160,000</td><td class="muted">Includes benefits &amp; overhead</td></tr>
+      <tr><td>Maintenance &amp; incident response</td><td class="num t-red">$696,000</td><td class="muted">≈ 60% of team capacity</td></tr>
+      <tr><td>On-call rotation stipends</td><td class="num">$32,000</td><td class="muted">2–3 incidents / month</td></tr>
+      <tr><td>Emergency vendor support</td><td class="num">$18,000</td><td class="muted">Ad-hoc performance tuning</td></tr>
+      <tr class="total-row"><td>Total annual cost</td><td class="num">$2,079,000</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout red">
+    <div class="ct">The hidden line</div>
+    <p>The largest controllable cost is <strong>$696K of maintenance and firefighting</strong> — roughly 60% of an eight-person team's capacity spent on toil instead of new capability. That is the line a purpose-built analytical lane is designed to reclaim.</p>
+  </div>
+</section>
+
+<!-- ════════ 4. PERFORMANCE GAP ════════ -->
+<section class="page-break">
+  <h2>4 · The Performance Gap</h2>
+  <p>Measured against what the business needs, every analytical metric is materially off target. Sources: operational logs (Jan–May 2026), query-performance monitoring, and the incident-tracking system.</p>
+
+  <table>
+    <thead><tr><th>Metric</th><th>Current</th><th>Target</th><th>Gap</th></tr></thead>
+    <tbody>
+      <tr><td>Query latency — p95 (typical query)</td><td class="num t-red">12 min</td><td class="num t-green">&lt; 5 sec</td><td class="num t-gold">144× slower</td></tr>
+      <tr><td>Query latency — p99 (worst case)</td><td class="num t-red">28 min</td><td class="num t-green">&lt; 15 sec</td><td class="num t-gold">112× slower</td></tr>
+      <tr><td>Data freshness (event → reportable)</td><td class="num t-red">24 hr</td><td class="num t-green">near-real-time</td><td class="num t-gold">~1 day behind</td></tr>
+      <tr><td>Analytical service availability</td><td class="num t-red">97.8%</td><td class="num t-green">99.5%</td><td class="num t-gold">+1.7 pts</td></tr>
+      <tr><td>Incident MTTR</td><td class="num t-red">5.2 hr</td><td class="num t-green">30 min</td><td class="num t-gold">10.4× faster</td></tr>
+      <tr><td>Incident frequency (contention-driven)</td><td class="num t-red">2.8 / mo</td><td class="num t-green">&lt; 0.5 / mo</td><td class="num t-gold">~6× fewer</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="ct">Read it this way</div>
+    <p>These are not incremental gaps to be tuned away — they are order-of-magnitude differences that signal a structural cause. A 144× latency gap is the signature of the wrong engine for the job, not a slow query.</p>
+  </div>
+</section>
+
+<!-- ════════ 5. BUSINESS IMPACT ════════ -->
+<section class="page-break">
+  <h2>5 · Business Impact</h2>
+  <p>The contention problem reaches the business on three fronts.</p>
+
+  <div class="cards c3">
+    <div class="card gold">
+      <div class="ic">Financial</div>
+      <div class="ch">Run-rate &amp; opportunity</div>
+      <p>$2.08M annual run-rate, ~$696K of it avoidable toil. Plus the unmeasured cost of decisions delayed by 24-hour-stale data.</p>
+    </div>
+    <div class="card">
+      <div class="ic">Operational</div>
+      <div class="ch">A team on the back foot</div>
+      <p>60–70% of capacity on maintenance and incident response. 2.8 incidents/month at 5.2-hour MTTR. New capability waits behind firefighting.</p>
+    </div>
+    <div class="card purple">
+      <div class="ic">Strategic</div>
+      <div class="ch">A ceiling on growth</div>
+      <p>The platform can't support real-time analytical use cases, and peak-time contention puts customer experience at risk as volume grows.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ 6. REQUIREMENTS ════════ -->
+<section class="page-break">
+  <h2>6 · Requirements &amp; Acceptance Criteria</h2>
+  <p>Each requirement is a verifiable outcome — a future test could pass or fail it — and each ties to a business KPI as current → target. <em>No technology is prescribed; the solution chooses how.</em></p>
+
+  <div class="req"><span class="rid">R1 · PEAK ISOLATION</span><div class="rt">Analytics must not degrade the storefront.</div><div class="rk">Verifiable: under peak load (75,000 orders/day), analytical queries cause <b>zero measurable degradation</b> to transactional latency.</div></div>
+  <div class="req"><span class="rid">R2 · QUERY LATENCY</span><div class="rt">Analytical queries return fast enough to act on.</div><div class="rk">KPI: p95 latency <b>12 min → &lt; 5 sec</b>; p99 <b>28 min → &lt; 15 sec</b>.</div></div>
+  <div class="req"><span class="rid">R3 · FRESHNESS</span><div class="rt">Reporting reflects recent reality, not yesterday.</div><div class="rk">KPI: event-to-reportable lag <b>24 hr → near-real-time</b> (minutes, not hours).</div></div>
+  <div class="req"><span class="rid">R4 · SELF-SERVE ACCESS</span><div class="rt">Business users can ask questions without engineering.</div><div class="rk">Verifiable: a defined set of analytical questions answerable directly by non-engineers, without a new report build each time.</div></div>
+  <div class="req"><span class="rid">R5 · OPERATIONAL TOIL</span><div class="rt">The team builds more than it firefights.</div><div class="rk">KPI: maintenance/incident share <b>60–70% → &lt; 30%</b> of capacity; incidents <b>2.8/mo → &lt; 0.5/mo</b>; MTTR <b>5.2 hr → 30 min</b>.</div></div>
+  <div class="req"><span class="rid">R6 · AVAILABILITY</span><div class="rt">The analytical service is dependable.</div><div class="rk">KPI: availability <b>97.8% → 99.5%</b>.</div></div>
+</section>
+
+<!-- ════════ 7. SCOPE ════════ -->
+<section class="page-break">
+  <h2>7 · Scope — In and Out</h2>
+  <div class="scope">
+    <div class="col in">
+      <h3 style="color:var(--green)">In scope</h3>
+      <ul>
+        <li>Separating analytical workloads from the transactional database.</li>
+        <li>A dependable, fast analytical store the business can query.</li>
+        <li>Keeping analytical data current to within minutes of the source.</li>
+        <li>Self-serve access to a defined set of analytical questions.</li>
+        <li>Reducing the team's maintenance and incident burden.</li>
+      </ul>
+    </div>
+    <div class="col out">
+      <h3 class="muted">Out of scope (this phase)</h3>
+      <ul>
+        <li>Personalization / recommendation engines.</li>
+        <li>Real-time machine-learning use cases.</li>
+        <li>Replacing the storefront or its transactional database.</li>
+        <li>Changes to the order, payment, or fulfillment business logic.</li>
+        <li>Net-new data sources beyond the current operational system.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="ct">Why the line sits here</div>
+    <p>This phase proves the separation and reclaims the operational headroom. Personalization and real-time ML are real opportunities, but they depend on this foundation and are deferred to a later phase so this one stays verifiable.</p>
+  </div>
+</section>
+
+<!-- ════════ 8. SUCCESS METRICS ════════ -->
+<section class="page-break">
+  <h2>8 · Success Metrics</h2>
+  <p>Success is defined as movement on these KPIs, each stated current → target. The initiative is delivered when they are met — not when the work feels finished.</p>
+  <table>
+    <thead><tr><th>Outcome</th><th>Current</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>Query latency (p95)</td><td class="num">12 min</td><td class="num t-green">&lt; 5 sec</td></tr>
+      <tr><td>Query latency (p99)</td><td class="num">28 min</td><td class="num t-green">&lt; 15 sec</td></tr>
+      <tr><td>Data freshness</td><td class="num">24 hr</td><td class="num t-green">near-real-time</td></tr>
+      <tr><td>Analytical availability</td><td class="num">97.8%</td><td class="num t-green">99.5%</td></tr>
+      <tr><td>Incident MTTR</td><td class="num">5.2 hr</td><td class="num t-green">30 min</td></tr>
+      <tr><td>Incident frequency</td><td class="num">2.8 / mo</td><td class="num t-green">&lt; 0.5 / mo</td></tr>
+      <tr><td>Team capacity on toil</td><td class="num">60–70%</td><td class="num t-green">&lt; 30%</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ════════ 9. CONSTRAINTS ════════ -->
+<section class="page-break">
+  <h2>9 · Constraints &amp; Assumptions</h2>
+  <div class="cards c2">
+    <div class="card"><div class="ic">Constraint</div><div class="ch">No storefront disruption</div><p>The solution must be built and cut over without degrading the live storefront or its data.</p></div>
+    <div class="card"><div class="ic">Constraint</div><div class="ch">Same team</div><p>Delivered with the current data team of eight; no headcount increase assumed in the business case.</p></div>
+    <div class="card"><div class="ic">Assumption</div><div class="ch">Source of truth unchanged</div><p>The transactional database remains the system of record; the analytical store is derived from it, not a replacement.</p></div>
+    <div class="card"><div class="ic">Assumption</div><div class="ch">Stable demand baseline</div><p>Volume (50K/day, 75K peak) and the current cost structure are representative for the planning horizon.</p></div>
+  </div>
+</section>
+
+<!-- ════════ 10. RECOMMENDATION ════════ -->
+<section class="page-break">
+  <h2>10 · Recommendation</h2>
+  <p class="lead">Commission the solution design. The problem is structural, the cost of inaction is roughly $2.08M per year, and the required outcomes are verifiable. We recommend engaging to translate this brief into a technical specification and a built, verified analytical backbone.</p>
+
+  <div class="cards c3">
+    <div class="card red"><div class="ic">If we wait</div><div class="ch">The toll compounds</div><p>$2.08M/yr continues; the team stays on the back foot; peak-time risk to checkout grows with volume.</p></div>
+    <div class="card"><div class="ic">What we ask</div><div class="ch">A verifiable solution</div><p>Separate the workloads and meet the Section 8 targets — each measurable, each tied to a KPI.</p></div>
+    <div class="card green"><div class="ic">If we act</div><div class="ch">Headroom returned</div><p>Fast, fresh analytics; isolation under peak; the maintenance line reclaimed for new capability.</p></div>
+  </div>
+
+  <div class="callout green">
+    <div class="ct">Approval requested</div>
+    <p>Approve this brief as the agreed statement of the problem and the required outcomes, and authorize the engagement to produce the technical specification that answers it.</p>
+  </div>
+
+  <div class="docfoot">BUSINESS REQUIREMENTS DOCUMENT · ANALYTICAL BACKBONE INITIATIVE · INTERNAL — CONFIDENTIAL</div>
+</section>
+
+</body>
+</html>

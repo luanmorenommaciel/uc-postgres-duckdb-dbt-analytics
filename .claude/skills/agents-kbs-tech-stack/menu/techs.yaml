@@ -1,0 +1,638 @@
+# Curated tech menu for agents-kbs-tech-stack.
+#
+# Each tech entry drives BOTH the architect and developer agent scaffold without
+# further interview — the menu IS the customization layer.
+#
+# Schema (every field required unless marked optional):
+#
+#   <slug>:
+#     display_name: "Human-readable name"
+#     description: "One-line scope"
+#     primary_language: python | typescript | sql | bash | go | rust | java
+#     recommended_mcps: ["mcp__id__*", ...]
+#     default_threshold_architect: 0.85 | 0.90 | 0.95 | 0.98
+#     default_threshold_developer: 0.85 | 0.90 | 0.95 | 0.98
+#     agent_color_architect: blue | green | purple | orange | red | yellow
+#     agent_color_developer: <same options>
+#     kb_seed:
+#       concepts: [<slug>, ...]    # 2–4 entries — each becomes concepts/<slug>.md
+#       patterns: [<slug>, ...]    # 2–4 entries — each becomes patterns/<slug>.md
+#       reference: [<slug>, ...]   # 1–3 entries — each becomes reference/<slug>.md
+#     architect_capabilities: ["...", ...]   # 3–5 bullets, drive the "Use PROACTIVELY" line
+#     developer_capabilities: ["...", ...]   # 3–5 bullets
+#     memorable_maxim: "One-line maxim closing the agent file"
+#     architect_mission: "One-sentence mission for the architect"
+#     developer_mission: "One-sentence mission for the developer"
+#   roles: [<role>, ...]   # OPTIONAL — default [architect, developer]; valid: architect, developer, troubleshooter
+#                            See menu/roles.yaml for the role registry.
+#   When roles includes 'troubleshooter', the tech entry MUST also declare:
+#     troubleshooter_mission, troubleshooter_capabilities, default_threshold_troubleshooter, agent_color_troubleshooter
+#
+# Adding a new tech: see references/tech-menu-curation.md
+
+react:
+  display_name: React
+  description: "React 19 + hooks + concurrent rendering + server components"
+  primary_language: typescript
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: purple
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [hooks-mental-model, concurrent-rendering, server-vs-client-components]
+    patterns: [data-fetching, state-management, suspense-boundaries]
+    reference: [hook-reference, error-boundary-patterns]
+  architect_capabilities:
+    - "Designing component trees and state-hoisting boundaries"
+    - "Deciding server vs client component placement in App Router"
+    - "Choosing Suspense and error-boundary granularity"
+    - "Evaluating rendering strategies (SSR / SSG / RSC / CSR)"
+  developer_capabilities:
+    - "Writing hooks with correct dependency arrays and cleanup"
+    - "Applying memoization only when measured (avoid premature memo)"
+    - "Writing testing-library tests with act() compliance"
+    - "Debugging concurrent-rendering edge cases (Suspense, transitions)"
+  memorable_maxim: "Components are functions of props. Side effects belong in hooks, not bodies."
+  architect_mission: "Decide React structure before code is written — wrong boundaries are cheap to draw, expensive to undo."
+  developer_mission: "Ship hooks and components that survive concurrent rendering and re-render with intent."
+
+nextjs:
+  display_name: Next.js
+  description: "Next.js 15 App Router, server actions, route handlers, middleware"
+  primary_language: typescript
+  recommended_mcps: ["mcp__context7__*", "mcp__claude_ai_Vercel__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: purple
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [app-router-mental-model, server-actions, rendering-modes]
+    patterns: [route-handler, middleware, parallel-routes]
+    reference: [file-conventions, caching-behavior]
+  architect_capabilities:
+    - "Deciding route segment layout and parallel/intercepting routes"
+    - "Choosing between server actions, route handlers, and external APIs"
+    - "Cache strategy: ISR vs on-demand vs no-store"
+    - "Edge vs Node runtime selection"
+  developer_capabilities:
+    - "Implementing route handlers with correct request/response shapes"
+    - "Writing server actions with revalidation"
+    - "Configuring middleware for auth, redirects, headers"
+    - "Debugging hydration mismatches and caching surprises"
+  memorable_maxim: "Routes are the API. Actions are mutations. Cache is the contract."
+  architect_mission: "Design routes and rendering modes that match the data's freshness needs, not the framework's defaults."
+  developer_mission: "Ship route handlers and server actions that cache correctly and never leak server state."
+
+fastapi:
+  display_name: FastAPI
+  description: "FastAPI async web framework with Pydantic v2, dependency injection, SSE"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: green
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [async-vs-sync, dependency-injection, pydantic-boundaries]
+    patterns: [route-design, background-tasks, sse-streaming]
+    reference: [response-models, exception-handlers]
+  architect_capabilities:
+    - "Designing route layouts and dependency graphs"
+    - "Choosing async vs sync paths per endpoint workload"
+    - "Modeling request/response schemas with Pydantic"
+    - "Selecting between background tasks, queues, and worker processes"
+  developer_capabilities:
+    - "Writing typed async routes with proper error handling"
+    - "Implementing SSE streams via sse-starlette"
+    - "Wiring dependency injection (auth, DB sessions, settings)"
+    - "Writing pytest + httpx tests against FastAPI apps"
+  memorable_maxim: "Types at the boundary. Async at the edges. Sync at the core."
+  architect_mission: "Design APIs whose shapes are obvious from their Pydantic models alone."
+  developer_mission: "Ship async routes that never block the event loop and never leak unbounded coroutines."
+
+python:
+  display_name: Python
+  description: "Python 3.11+ idioms — typing, asyncio, packaging, dataclasses"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: green
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [typing-discipline, async-mental-model, packaging-modern]
+    patterns: [dataclass-vs-pydantic, context-managers, exception-design]
+    reference: [stdlib-cheatsheet, pep-references]
+  architect_capabilities:
+    - "Choosing between dataclasses, Pydantic, and attrs"
+    - "Deciding async vs sync architecture per module"
+    - "Designing package layout (src/ vs flat, namespace packages)"
+    - "Selecting test framework + coverage strategy"
+  developer_capabilities:
+    - "Writing strictly-typed code (Python 3.11+ idioms — `str | None`, `Annotated`)"
+    - "Refactoring sync to async (and back when async was wrong)"
+    - "Configuring ruff, mypy, pytest for the project"
+    - "Debugging typing edge cases (generics, ParamSpec, TypedDict)"
+  memorable_maxim: "Typed at the boundary. Idiomatic in the body. Tested at the edges."
+  architect_mission: "Pick Python patterns that age well — boring is a feature."
+  developer_mission: "Ship Python that ruff and mypy agree with on first run."
+
+typescript:
+  display_name: TypeScript
+  description: "TypeScript 5.x patterns — strict mode, generics, type guards, ESM"
+  primary_language: typescript
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: blue
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [structural-typing, narrowing, generics]
+    patterns: [discriminated-unions, type-guards, branded-types]
+    reference: [utility-types, tsconfig-options]
+  architect_capabilities:
+    - "Designing type hierarchies that narrow well"
+    - "Choosing between unions, intersections, and inheritance"
+    - "Configuring strict mode levels per package"
+    - "Deciding when to use generics vs concrete types"
+  developer_capabilities:
+    - "Writing exhaustive switch via discriminated unions"
+    - "Refactoring `any` and `unknown` into precise types"
+    - "Crafting type guards and assertion functions"
+    - "Debugging structural-typing surprises"
+  memorable_maxim: "Make the illegal states unrepresentable."
+  architect_mission: "Design types that document the domain and refuse invalid combinations at compile time."
+  developer_mission: "Ship code where every branch is type-checked and `any` requires justification."
+
+langgraph:
+  display_name: LangGraph
+  description: "LangGraph state-machine orchestration — nodes, edges, interrupts, checkpointing"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__exa__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [state-machine-model, interrupts-and-resume, json-safe-state]
+    patterns: [node-design, conditional-edges, checkpointing]
+    reference: [state-types, graph-compile-options]
+  architect_capabilities:
+    - "Designing node boundaries and conditional edge logic"
+    - "Choosing where interrupts belong (clarification, approval, human-in-loop)"
+    - "Deciding state shape — TypedDict invariants, JSON-safety"
+    - "Selecting checkpointing strategy and persistence backend"
+  developer_capabilities:
+    - "Implementing nodes that mutate state safely"
+    - "Writing conditional edges with correct routing"
+    - "Resuming from interrupts via state hydration"
+    - "Testing graph traversal with stub LLM responses"
+  memorable_maxim: "State is the contract. Nodes are pure(ish). Edges are routing."
+  architect_mission: "Design graphs whose state never holds non-serializable junk."
+  developer_mission: "Ship nodes that always JSON-serialize, always advance, and never strand a conversation."
+
+postgres:
+  display_name: PostgreSQL
+  description: "Postgres 15+ — schema design, indexes, query plans, extensions"
+  primary_language: sql
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.98
+  agent_color_architect: red
+  agent_color_developer: red
+  kb_seed:
+    concepts: [normalization-tradeoffs, indexing-mental-model, mvcc]
+    patterns: [migration-safety, query-tuning, partitioning]
+    reference: [index-types, explain-analyze-reading]
+  architect_capabilities:
+    - "Designing schemas that normalize when it pays and denormalize when it must"
+    - "Choosing index types (B-tree, GIN, GiST, BRIN, partial)"
+    - "Planning migrations safe under concurrent writes"
+    - "Selecting extensions (pg_cron, pgvector, postgis) with cost awareness"
+  developer_capabilities:
+    - "Writing migrations that don't lock tables in production"
+    - "Reading EXPLAIN ANALYZE and choosing indexes accordingly"
+    - "Refactoring slow queries (joins, CTEs, window functions)"
+    - "Configuring role-based access and row-level security"
+  memorable_maxim: "Reads are queries. Writes are migrations. Both need EXPLAIN."
+  architect_mission: "Design schemas the future maintainer will not curse."
+  developer_mission: "Ship SQL that proves its plan with EXPLAIN before it ships."
+
+sqlglot:
+  display_name: sqlglot
+  description: "SQL parsing, AST traversal, dialect translation, query rewriting"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__exa__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: red
+  agent_color_developer: red
+  kb_seed:
+    concepts: [ast-shape, dialect-translation, expression-visitors]
+    patterns: [safety-validation, query-rewriting, schema-qualification]
+    reference: [node-type-catalog, dialect-matrix]
+  architect_capabilities:
+    - "Designing AST-based validators (read-only enforcement, schema gating)"
+    - "Choosing dialect targets and translation strategy"
+    - "Planning rewrite rules with correctness guarantees"
+    - "Deciding where sqlglot ends and the executor begins"
+  developer_capabilities:
+    - "Writing AST visitors for validation or rewriting"
+    - "Translating queries between Postgres / DuckDB / BigQuery / Snowflake"
+    - "Building schema-qualification passes"
+    - "Testing rewrites against round-trip parse/print equality"
+  memorable_maxim: "The AST is the truth. Strings lie."
+  architect_mission: "Validate SQL by parsing it — never by regex."
+  developer_mission: "Ship transforms whose round-trip is byte-stable when it should be and semantically-equivalent always."
+
+react-flow:
+  display_name: React Flow
+  description: "React Flow v12 — node-based graphs, custom nodes, layout engines (dagre, elkjs)"
+  primary_language: typescript
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: purple
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [node-edge-model, layout-engines, performance-at-scale]
+    patterns: [custom-node, auto-layout, controlled-flow]
+    reference: [hook-catalog, layout-algorithms]
+  architect_capabilities:
+    - "Choosing between dagre, elkjs, and force layouts for the graph shape"
+    - "Designing custom node hierarchies (handles, sub-nodes, collapse)"
+    - "Planning controlled vs uncontrolled flow state"
+    - "Performance budgeting for node counts (50 vs 500 vs 5000)"
+  developer_capabilities:
+    - "Implementing custom nodes with React.memo and stable callbacks"
+    - "Wiring auto-layout with useAutoLayout / useReactFlow"
+    - "Adding interactions (zoom, pan, minimap, selection)"
+    - "Exporting as PNG/SVG via html-to-image"
+  memorable_maxim: "Memoize nodes. Subscribe with selectors. Layout once, render many."
+  architect_mission: "Decide layout strategy before drawing — re-laying out is the most expensive operation in the lib."
+  developer_mission: "Ship React Flow canvases that stay 60fps past 200 nodes."
+
+tailwind:
+  display_name: Tailwind CSS
+  description: "Tailwind CSS 3+ — utility-first styling, design tokens, JIT mode"
+  primary_language: typescript
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.85
+  default_threshold_developer: 0.90
+  agent_color_architect: yellow
+  agent_color_developer: yellow
+  kb_seed:
+    concepts: [utility-first-philosophy, design-tokens, responsive-strategy]
+    patterns: [component-extraction, theme-customization, dark-mode]
+    reference: [utility-cheatsheet, plugin-catalog]
+  architect_capabilities:
+    - "Choosing between utilities, components, and CSS variables for shared styles"
+    - "Designing the project's color/spacing/typography token system"
+    - "Deciding when to extract components vs leaving utilities inline"
+    - "Configuring responsive breakpoints and dark mode strategy"
+  developer_capabilities:
+    - "Writing accessible, semantic markup with Tailwind utilities"
+    - "Customizing tailwind.config.ts for project tokens"
+    - "Refactoring repeated utility chains into components or @apply rules"
+    - "Debugging JIT misses and PurgeCSS surprises"
+  memorable_maxim: "Tokens are policy. Utilities are tactics. Components are reuse."
+  architect_mission: "Design token systems that survive a redesign without renaming."
+  developer_mission: "Ship markup that's semantic first, styled second, accessible always."
+
+# ─── Data-engineering cluster ──────────────────────────────────────────────
+
+aws-lambda:
+  display_name: AWS Lambda
+  description: "AWS Lambda — event-driven Python functions, S3/SQS/EventBridge triggers, DLQ contracts, cold-start tuning"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.90
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [event-driven-model, cold-start-anatomy, idempotency-contracts]
+    patterns: [s3-trigger-pipeline, dlq-and-retry, temporary-directory-discipline]
+    reference: [runtime-limits, environment-variables]
+  architect_capabilities:
+    - "Designing event source mappings (S3 / SQS / EventBridge / API Gateway)"
+    - "Choosing memory/timeout budgets that minimize cost per invocation"
+    - "Planning DLQ + retry contracts that never silently drop events"
+    - "Deciding between Lambda, Step Functions, and ECS for the workload"
+  developer_capabilities:
+    - "Writing handlers that are idempotent under at-least-once delivery"
+    - "Using /tmp via TemporaryDirectory and respecting the 512MB cap"
+    - "Implementing adaptive retry with exponential backoff + jitter"
+    - "Packaging deployments with layers and minimal cold-start overhead"
+  memorable_maxim: "Handlers are idempotent. /tmp is ephemeral. Retries are inevitable."
+  architect_mission: "Design event flows where every message has a destination — success, DLQ, or explicit drop."
+  developer_mission: "Ship handlers that survive duplicate delivery, partial failures, and cold starts under load."
+
+databricks-lakeflow:
+  display_name: Databricks Lakeflow
+  description: "Databricks Lakeflow — DLT pipelines, Auto Loader, Medallion architecture (Bronze/Silver/Gold), Databricks Asset Bundles"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.90
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [medallion-architecture, dlt-mental-model, auto-loader-semantics]
+    patterns: [bronze-ingest, silver-conformance, gold-aggregates]
+    reference: [dab-yaml-schema, dlt-decorators]
+  architect_capabilities:
+    - "Designing Bronze/Silver/Gold boundaries with clear conformance rules"
+    - "Choosing between DLT, Workflows, and Jobs for each pipeline"
+    - "Planning Auto Loader checkpoints + schema evolution policy"
+    - "Selecting cluster + photon configuration per workload tier"
+  developer_capabilities:
+    - "Writing DLT pipelines with @dlt.table and quality expectations"
+    - "Configuring Auto Loader with schemaLocation and rescued data"
+    - "Implementing CDC patterns (APPLY CHANGES INTO) at the Silver layer"
+    - "Packaging deployments as Databricks Asset Bundles (DABs)"
+  memorable_maxim: "Bronze is raw. Silver is conformed. Gold is the answer."
+  architect_mission: "Design Medallion layers so each layer's contract is enforced by code, not convention."
+  developer_mission: "Ship DLT pipelines whose data quality expectations fail loudly and recover gracefully."
+
+apache-spark:
+  display_name: Apache Spark
+  description: "Apache Spark 3.5+ — DataFrame/SQL APIs, AQE, broadcast joins, partition tuning, memory management"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.90
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [execution-model, shuffle-anatomy, memory-tiers]
+    patterns: [broadcast-join-strategy, adaptive-query-execution, partition-tuning]
+    reference: [spark-conf-catalog, explain-plan-reading]
+  architect_capabilities:
+    - "Designing partitioning strategies that minimize shuffle"
+    - "Choosing between broadcast, sort-merge, and shuffle-hash joins"
+    - "Planning AQE settings (skew handling, coalesce, dynamic switching)"
+    - "Selecting executor/driver memory + core counts per job class"
+  developer_capabilities:
+    - "Writing DataFrame transforms that survive skew without manual salting"
+    - "Reading explain(extended=true) plans to find shuffle hotspots"
+    - "Tuning spark.sql.adaptive.* + spark.sql.shuffle.partitions per job"
+    - "Debugging OOMs via executor logs + memory tier diagnosis"
+  memorable_maxim: "Shuffle is the enemy. Broadcast when small. Partition with intent."
+  architect_mission: "Design jobs whose physical plan is predictable from the logical plan alone."
+  developer_mission: "Ship Spark transforms that scale linearly with data, not quadratically with skew."
+
+dbt:
+  display_name: dbt
+  description: "dbt Core / Cloud — models, sources, tests, snapshots, materializations, ref-graph discipline"
+  primary_language: sql
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [models-and-materializations, tests-and-sources, snapshots-mental-model]
+    patterns: [incremental-models, ref-graph-discipline, ci-build-and-state-defer]
+    reference: [jinja-helpers, dbt-yaml-schema]
+  architect_capabilities:
+    - "Choosing materialization per model (view / table / incremental / ephemeral)"
+    - "Designing ref-graph boundaries (staging / intermediate / marts)"
+    - "Planning test coverage at sources + critical marts"
+    - "Selecting CI strategy with state:modified+ and defer"
+  developer_capabilities:
+    - "Writing incremental models with correct unique_key + on_schema_change"
+    - "Authoring schema.yml tests (unique, not_null, relationships, accepted_values)"
+    - "Using Jinja macros without obscuring the SQL"
+    - "Debugging compilation errors and ref() cycles"
+  memorable_maxim: "Models are pure. Sources are raw. Tests are the contract."
+  architect_mission: "Design dbt projects where the ref-graph reads like a data product catalog."
+  developer_mission: "Ship models whose materialization, tests, and lineage tell the whole story."
+
+pyarrow:
+  display_name: PyArrow
+  description: "Apache Arrow Python bindings — columnar memory, zero-copy interop, Parquet/Feather IO, compute kernels"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [columnar-memory-model, zero-copy-interop, arrow-schema-vs-pandas]
+    patterns: [parquet-roundtrip, streaming-ipc, dataset-partitioning]
+    reference: [compute-kernels, type-mapping-matrix]
+  architect_capabilities:
+    - "Designing schemas that survive Pandas / Polars / DuckDB boundaries"
+    - "Choosing between Table, RecordBatch, and Dataset abstractions"
+    - "Planning partitioned Parquet layouts for predicate pushdown"
+    - "Deciding when Arrow IPC beats Parquet (streams vs files)"
+  developer_capabilities:
+    - "Writing Parquet readers/writers with correct compression + dictionary encoding"
+    - "Using pyarrow.compute kernels instead of round-tripping through Pandas"
+    - "Mapping logical types (timestamp tz, decimal, list, struct) without surprises"
+    - "Debugging zero-copy boundaries (when a copy silently happens)"
+  memorable_maxim: "Columns are contiguous. Copies are choices. Schemas are forever."
+  architect_mission: "Design data flows where Arrow is the lingua franca and Pandas is the consumer, not the format."
+  developer_mission: "Ship readers and writers whose schemas round-trip byte-for-byte across engines."
+
+# ─── Automation cluster ────────────────────────────────────────────────────
+
+n8n:
+  display_name: n8n
+  description: "n8n workflow automation — nodes, expressions, AI Agent node, error workflows, self-hosted runtime"
+  primary_language: typescript
+  recommended_mcps: ["mcp__claude_ai_n8n__*", "mcp__context7__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: purple
+  agent_color_developer: green
+  kb_seed:
+    concepts: [workflow-basics, ai-agent-node, expression-language]
+    patterns: [workflow-topology, error-handling-workflow, ai-agent-with-tools]
+    reference: [node-catalog, expression-syntax]
+  architect_capabilities:
+    - "Designing workflow topology (linear / branched / sub-workflows)"
+    - "Choosing between built-in nodes, HTTP Request, and Code nodes"
+    - "Planning error-handling workflows and retry policy per node"
+    - "Deciding where the AI Agent node belongs vs explicit tool calls"
+  developer_capabilities:
+    - "Writing expressions in {{ $json }} / {{ $node[...] }} idioms correctly"
+    - "Configuring the AI Agent node with tools, memory, and output parsers"
+    - "Implementing error workflows that route failures without losing context"
+    - "Debugging executions via the execution log and pinned data"
+  memorable_maxim: "Nodes are functions. Expressions are glue. Error workflows are the safety net."
+  architect_mission: "Design n8n workflows whose topology survives the next requirement without a rewrite."
+  developer_mission: "Ship workflows that fail loudly into an error workflow and never silently drop a run."
+
+airflow:
+  display_name: Apache Airflow
+  description: "Apache Airflow 2.9+ — DAGs, task groups, TaskFlow API, sensors, deferrable operators, executor selection"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.90
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [dag-mental-model, scheduler-vs-executor, deferrable-operators]
+    patterns: [taskflow-api, sensors-and-triggers, dynamic-task-mapping]
+    reference: [operator-catalog, airflow-cfg-tuning]
+  architect_capabilities:
+    - "Designing DAGs whose schedule, catchup, and SLA semantics are explicit"
+    - "Choosing executor (Local / Celery / Kubernetes) per workload profile"
+    - "Planning sensor vs deferrable-operator usage to avoid worker starvation"
+    - "Deciding DAG-per-pipeline vs task-group boundaries"
+  developer_capabilities:
+    - "Writing TaskFlow API DAGs with typed XCom returns"
+    - "Implementing dynamic task mapping for fan-out workloads"
+    - "Configuring retries, on_failure_callback, and SLA misses correctly"
+    - "Debugging scheduler latency and queued-task pile-ups"
+  memorable_maxim: "DAGs are declarations. Sensors are patient. Deferrable is free."
+  architect_mission: "Design DAGs whose retries, SLAs, and dependencies are documented in code, not folklore."
+  developer_mission: "Ship Airflow tasks that are idempotent, observable, and never block a worker slot."
+
+# ─── BaaS cluster ──────────────────────────────────────────────────────────
+
+supabase:
+  display_name: Supabase
+  description: "Supabase BaaS — Postgres + Auth + Storage + Realtime + Edge Functions, RLS-first, JS/TS client SDK"
+  primary_language: typescript
+  recommended_mcps: ["mcp__claude_ai_Supabase__*", "mcp__context7__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: green
+  agent_color_developer: green
+  kb_seed:
+    concepts: [rls-mental-model, auth-and-jwt-claims, realtime-channels]
+    patterns: [rls-policy-design, edge-function-deploy, storage-bucket-policies]
+    reference: [supabase-js-api, migration-cli]
+  architect_capabilities:
+    - "Designing RLS policies that match the auth model (anon / authenticated / service_role)"
+    - "Choosing between Edge Functions, Postgres functions, and client logic"
+    - "Planning Realtime channels and broadcast vs presence vs postgres_changes"
+    - "Selecting storage bucket policies and signed URL strategy"
+  developer_capabilities:
+    - "Writing RLS policies that read like specifications, not puzzles"
+    - "Using supabase-js with correct typing from generated types"
+    - "Deploying Edge Functions with secrets and CORS configured right"
+    - "Debugging auth flows (PKCE, magic links, JWT refresh)"
+  memorable_maxim: "RLS is the API. Auth is the identity. Realtime is the bonus."
+  architect_mission: "Design Supabase projects where RLS makes the backend redundant."
+  developer_mission: "Ship features whose security lives in the database, not in the client."
+
+# ─── AI-Native DataOps cluster (Sentinel Engine stack) ─────────────────────
+# Added for ws-3-crew-ai-multi-agent. Grounded in:
+#   crewai  → /websites/crewai_en (docs.crewai.com)
+#   dagster → /websites/dagster_io (docs.dagster.io)
+#   duckdb  → /websites/duckdb_current (duckdb.org/docs)
+#   mcp     → /websites/modelcontextprotocol_io (modelcontextprotocol.io)
+
+crewai:
+  display_name: CrewAI
+  description: "CrewAI multi-agent orchestration — hierarchical Process, manager_llm, memory, knowledge/RAG, guardrails + output_pydantic, human_input, Flows, tool retry"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*", "mcp__exa__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [crew-agent-task-model, hierarchical-process, memory-and-knowledge]
+    patterns: [guardrails-output-pydantic, human-in-the-loop, flows-conditional-routing]
+    reference: [agent-task-crew-api, capability-unlock-map]
+  architect_capabilities:
+    - "Designing crew topology — hierarchical Process with manager_llm vs sequential"
+    - "Mapping each failure mode to the CrewAI capability it forces (Memory / RAG / HITL / guardrails / retry / Flows)"
+    - "Deciding where human_input gates a destructive remediation"
+    - "Choosing model tiers per agent (stronger manager, cheaper specialists) against a cost budget"
+  developer_capabilities:
+    - "Writing Agent/Task/Crew definitions with typed expected_output and output_pydantic"
+    - "Implementing task guardrail functions that validate before accepting output"
+    - "Wiring memory + knowledge sources so a repeat incident isn't cold-started"
+    - "Building Flows with conditional routing that fan each failure type to the right squad"
+  memorable_maxim: "Agents have roles. Tasks have contracts. The manager delegates. Guardrails decide what counts as done."
+  architect_mission: "Design crews whose every agent earns its tokens and whose every failure mode has an owner."
+  developer_mission: "Ship agents whose output is typed, validated, and scored against ground truth — not vibes."
+
+dagster:
+  display_name: Dagster
+  description: "Dagster — software-defined assets, incremental/partitioned ingestion, asset checks, sensors, structured run logs the Log Analyst reads"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.95
+  default_threshold_developer: 0.90
+  agent_color_architect: orange
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [asset-mental-model, partitions-and-incremental, asset-checks-vs-dbt-tests]
+    patterns: [postgres-to-duckdb-asset, incremental-extraction, sensor-and-run-status]
+    reference: [asset-decorator-api, run-log-and-metadata]
+  architect_capabilities:
+    - "Designing the asset graph (one asset per source table) and its lineage"
+    - "Choosing partitioning + incremental strategy for Postgres → DuckDB extraction"
+    - "Deciding asset checks vs dbt tests for each data-quality guarantee"
+    - "Planning the run-status surface + sensors that trigger the Sentinel"
+  developer_capabilities:
+    - "Writing @asset / @asset_check functions with typed context and metadata"
+    - "Implementing incremental extraction that survives schema drift in the source"
+    - "Emitting structured run logs the Log Analyst can parse for the failing node"
+    - "Configuring sensors / run-status hooks that fire on materialization failure"
+  memorable_maxim: "Assets are the unit. Lineage is free. The run log is the Sentinel's evidence."
+  architect_mission: "Design an asset graph whose failures are legible in the run log without a debugger."
+  developer_mission: "Ship assets that extract incrementally, check their own quality, and log loudly when they break."
+
+duckdb:
+  display_name: DuckDB
+  description: "DuckDB — in-process analytical engine, columnar/vectorized queries, Parquet, postgres scanner, MotherDuck cloud path; the Profiler queries this"
+  primary_language: sql
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: green
+  agent_color_developer: green
+  kb_seed:
+    concepts: [columnar-vectorized-model, embedded-vs-warehouse, motherduck-cloud-path]
+    patterns: [postgres-scan-ingest, gold-obt-query, anomaly-profiling-queries]
+    reference: [sql-dialect-notes, performance-and-explain]
+  architect_capabilities:
+    - "Deciding what materializes in DuckDB vs stays in Postgres (the detection-seam call, U3)"
+    - "Designing gold One-Big-Tables for sub-5s p95 query latency (AC-2)"
+    - "Planning the MotherDuck migration path (file → connection string, no SQL rewrites)"
+    - "Choosing where the Profiler's anomaly checks run — silver vs gold"
+  developer_capabilities:
+    - "Writing analytical SQL that exploits columnar/vectorized execution"
+    - "Ingesting from Postgres via the scanner and round-tripping Parquet"
+    - "Writing the Profiler's anomaly-detection queries (nulls, ranges, dupes, drift)"
+    - "Reading EXPLAIN/ANALYZE to keep gold queries inside the latency budget"
+  memorable_maxim: "Columns are fast. Embedded is simple. What reaches gold is what the Profiler can see."
+  architect_mission: "Design a warehouse where the answer is one OBT away and the cloud path is a connection string."
+  developer_mission: "Ship queries that hit the latency budget and surface exactly the anomalies the source injected."
+
+mcp:
+  display_name: Model Context Protocol
+  description: "MCP — exposing analytics as typed tools (get_schema_info / execute_analytical_query / generate_report) over stdio/HTTP for Claude Desktop and other LLM hosts"
+  primary_language: python
+  recommended_mcps: ["mcp__context7__*", "mcp__ref__*"]
+  default_threshold_architect: 0.90
+  default_threshold_developer: 0.95
+  agent_color_architect: purple
+  agent_color_developer: blue
+  kb_seed:
+    concepts: [mcp-protocol-model, tools-vs-resources, transport-stdio-http]
+    patterns: [tool-schema-design, analytical-tool-server, nl-to-sql-tool]
+    reference: [server-sdk-api, tool-json-schema]
+  architect_capabilities:
+    - "Designing the three analytical tools' contracts (schema / query / report)"
+    - "Choosing tools vs resources for each capability the warehouse exposes"
+    - "Deciding transport (stdio vs HTTP) and the security boundary around DuckDB"
+    - "Planning how natural-language intent maps to deterministic, parameterized SQL"
+  developer_capabilities:
+    - "Implementing an MCP server (FastMCP / SDK) exposing typed tools over gold tables"
+    - "Writing JSON-Schema tool definitions whose shapes the LLM can call reliably"
+    - "Translating NL intent → validated DuckDB SQL → deterministic result set"
+    - "Testing the server against an MCP client / inspector before wiring Claude Desktop"
+  memorable_maxim: "Tools are the API. Schemas are the contract. The LLM is just the caller."
+  architect_mission: "Design MCP tools whose schemas make the warehouse self-describing to any LLM host."
+  developer_mission: "Ship tools that turn natural language into deterministic SQL and never leak the raw connection."

@@ -1,6 +1,6 @@
 # Converge · Pass 5 — Tasking
 
-**Engine:** the `task-spec` skill — self-contained and engine-agnostic (it carries its own task-architect and scripts; it authors tasks without the harness).
+**Engine:** the **`task-spec` skill** — invoke it by name (see Step 0). Self-contained and engine-agnostic: it carries its own task-architect, templates, validator, and the safe-to-delegate gate, so it authors tasks without the harness existing.
 **Inputs:** `sketch/duckdb-dbt-med-arch.plan` · `sketch/fast-api-mcp.plan` (sharpened in Pass 4).
 **Output:** `tasks/*` — one file per atomic unit, each carrying a **runnable eval**.
 **Gate:** every task is atomic, described by TECH (not by agent), and binds an eval that actually runs.
@@ -8,6 +8,35 @@
 Three steps: **cut atomic units → describe by tech → bind a runnable eval.**
 
 > Teaching note: Tasking comes BEFORE Harness on purpose. A task is the requirement; the harness is fitted to it. `task-spec` is self-contained, so it authors the tasks without any `.claude/` control layer existing yet — and it describes the *work* (the tech and the eval), never the agent that will do it. That forward dependency is what lets Pass 6 scaffold exactly what the tasks need, with no circularity.
+
+---
+
+## Step 0 · Invoke the skill — make the call explicit
+
+This pass is run **by the `task-spec` skill**, not by free-hand prompting. Invoke it
+explicitly so it brings its own task-architect, templates, validator, and the
+`safe-to-delegate` gate. Two ways, depending on volume:
+
+```text
+Use the task-spec skill to cut sketch/duckdb-dbt-med-arch.plan and
+sketch/fast-api-mcp.plan into atomic Task-Specs under tasks/. One spec per
+shippable unit; each must carry a runnable eval. Walk the build order
+(bronze → silver → gold → API → MCP). Describe each task by TECH and artifact —
+never name an agent.
+```
+
+For a whole plan at once, the skill's **batch-sprint** path generates N specs in one
+motion (it ships a runbook for exactly this):
+
+```bash
+# the skill's batch composer — N specs in a known domain, one pass.
+# The skill ships with this repo under .claude/skills/task-spec/.
+bash .claude/skills/task-spec/scripts/batch-generate.sh   # see its runbooks/batch-sprint-compose.md
+```
+
+The three steps below are what the skill does for each task — run them through it,
+not around it. Its bundled `validate-task-spec.sh` + `safe-to-delegate.sh --stamp`
+are the structural gate; a spec isn't done until it passes them.
 
 ---
 
