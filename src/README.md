@@ -8,10 +8,10 @@ operational source, DuckDB is the analytical store, and nothing flows back.
 DuckDB is an **embedded, in-process library** — a single local file, not a server
 or container. Only Postgres is containerized. There is no DuckDB service to start.
 
-```
-                  generate / seed            make land
-  synthetic data ───────────────▶ PostgreSQL ──ATTACH/copy──▶ DuckDB (raw.*)
-                                   (container)                  (embedded file)
+```mermaid
+graph LR
+    S([generate / seed]) --> P[(PostgreSQL<br/>container)]
+    P -->|make land · ATTACH/copy| W[(DuckDB raw.*<br/>embedded file)]
 ```
 
 > **Verified end-to-end.** On a clean slate, the full pipeline runs and the row

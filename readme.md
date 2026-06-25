@@ -19,36 +19,55 @@ What ships here is small and honest:
 Postgres is containerized; **DuckDB is not** — it is an embedded, in-process
 library backed by a single local file. There is no DuckDB server or container.
 
-## Architecture
+## What the pipeline actually is
 
-```
-  src/gen ──inject──▶ ┌────────────┐   make land    ┌──────────────────────┐
-  src/seed ──seed──▶  │  Postgres  │ ──ATTACH/copy─▶ │  DuckDB warehouse     │
-                      │ (container)│                 │  raw.*  (embedded file)│
-                      │  public.*  │                 └──────────────────────┘
-                      │  _control.*│ ◀── ground-truth ledger, opt-in, NEVER landed
-                      └────────────┘     (public.* is all the warehouse reads)
+Three steps, one direction. The generator seeds (and corrupts) the operational
+**Postgres** source; `make land` `ATTACH`es Postgres read-only from **DuckDB** and
+copies the business tables into `raw.*`; everything downstream reads the warehouse.
+
+```mermaid
+graph LR
+    G([make seed / inject]) --> P[(Postgres<br/>public.*)]
+    P -->|make land · ATTACH read-only| W[(DuckDB<br/>raw.*)]
+    W --> D([transform / serve<br/>built live])
+    C[(Postgres<br/>_control.*)] -.never landed.- W
 ```
 
 The source `public` schema holds only the four business tables — it looks like a
 real production database, with no incident table to give the game away. The
-answer key lives in a separate `_control` schema the analytics never read.
+ground-truth ledger lives in a separate `_control` schema the warehouse never
+reads (the dotted edge): a sealed answer key, written only with `RECORD=1`.
+
+## Architecture
+
+The source crosses into the analytical store exactly once, through `src/transition`.
+`src/db` and `src/warehouse` are the two leaves everything else depends on.
+
+```mermaid
+graph LR
+    SEED[src/seed<br/>clean baseline] --> DB
+    GEN[src/gen<br/>traffic + 14 defects] --> DB
+    DB[(src/db<br/>Postgres · public + _control)]
+    DB -->|ATTACH read-only| T[src/transition<br/>land raw.*]
+    T --> WH[(src/warehouse<br/>DuckDB file)]
+    GEN -.RECORD=1.- LEDGER[(_control<br/>answer key)]
+    LEDGER -.never landed.- WH
+```
 
 | Package          | Role |
 |------------------|------|
-| `src/db`         | Postgres connection + schema (`01_schema.sql`) |
+| `src/db`         | Postgres connection + schema (`01_schema.sql`) — the operational source |
 | `src/seed`       | Deterministic clean baseline (correlated synthetic data) |
 | `src/gen`        | 14-mode chaos generator + fenced `_control.injected_incidents` ledger |
-| `src/transition` | Postgres -> DuckDB `raw.*` movement via `ATTACH` (full refresh) |
-| `src/warehouse`  | The single DuckDB file + the connection contract |
+| `src/transition` | Postgres -> DuckDB `raw.*` movement via `ATTACH` (full refresh) — the only bridge |
+| `src/warehouse`  | The single embedded DuckDB file + the connection contract |
 
-Postgres is the operational source. `make land` runs `src/transition`, which
-ATTACHes Postgres read-only from DuckDB and copies the source tables into `raw.*`
-inside a single embedded DuckDB file (`src/warehouse/warehouse.duckdb` by default;
-override with `DUCKDB_DATABASE`). That warehouse file is the seam everything
-downstream reads from. See [`src/README.md`](src/README.md) for the per-package
-deep dive — the schema, the landing contract, the warehouse contract, and the 14
-failure modes are all documented there.
+`make land` runs `src/transition`, which `ATTACH`es Postgres read-only from DuckDB
+and copies the source tables into `raw.*` inside a single embedded DuckDB file
+(`src/warehouse/warehouse.duckdb` by default; override with `DUCKDB_DATABASE`).
+That warehouse file is the seam everything downstream reads from. See
+[`src/README.md`](src/README.md) for the per-package deep dive — the schema, the
+landing contract, the warehouse contract, and the 14 failure modes.
 
 ## Quickstart
 
@@ -61,6 +80,19 @@ make land                        # Postgres -> DuckDB raw.* via ATTACH
 
 make inject FAILURE=schema_drift # inject a defect (SILENT by default)
 make failures                    # list all 14 failure modes
+```
+
+The operator loop — set up once, then cycle seed → land → inspect → reset:
+
+```mermaid
+graph LR
+    A([make up]) --> B[make seed]
+    B --> C[make land]
+    C --> E{inspect<br/>Postgres + DuckDB}
+    E -->|inject a defect| D[make inject]
+    D --> C
+    E -->|start clean| F([make reset])
+    F --> B
 ```
 
 ### Silent failures and the fenced answer key
