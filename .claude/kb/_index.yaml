@@ -1,0 +1,147 @@
+project: uc-postgres-duckdb-dbt-analytics
+description: "Postgres\u2192DuckDB one-way landing with a dbt medallion (raw\u2192\
+  bronze\u2192silver\u2192gold) served read-only over FastAPI + MCP"
+last_updated: '2026-06-25'
+domains:
+  dbt:
+    name: dbt
+    description: "dbt Core / Cloud \u2014 models, sources, tests, snapshots, materializations,\
+      \ ref-graph discipline"
+    path: dbt/
+    mcp_validated: '2026-06-26'
+    entry_points:
+      quick_reference: quick-reference.md
+    concepts:
+    - name: models-and-materializations
+      path: concepts/models-and-materializations.md
+      confidence: 0.95
+    - name: tests-and-sources
+      path: concepts/tests-and-sources.md
+      confidence: 0.95
+    - name: snapshots-mental-model
+      path: concepts/snapshots-mental-model.md
+      confidence: 0.95
+    patterns:
+    - name: incremental-models
+      path: patterns/incremental-models.md
+    - name: ref-graph-discipline
+      path: patterns/ref-graph-discipline.md
+    - name: ci-build-and-state-defer
+      path: patterns/ci-build-and-state-defer.md
+    reference:
+    - name: jinja-helpers
+      path: reference/jinja-helpers.md
+    - name: dbt-yaml-schema
+      path: reference/dbt-yaml-schema.md
+  duckdb:
+    name: DuckDB
+    description: "DuckDB \u2014 in-process analytical engine, columnar/vectorized\
+      \ queries, Parquet, postgres scanner, MotherDuck cloud path; the Profiler queries\
+      \ this"
+    path: duckdb/
+    mcp_validated: '2026-06-26'
+    entry_points:
+      quick_reference: quick-reference.md
+    concepts:
+    - name: columnar-vectorized-model
+      path: concepts/columnar-vectorized-model.md
+      confidence: 0.95
+    - name: embedded-vs-warehouse
+      path: concepts/embedded-vs-warehouse.md
+      confidence: 0.95
+    - name: motherduck-cloud-path
+      path: concepts/motherduck-cloud-path.md
+      confidence: 0.95
+    patterns:
+    - name: postgres-scan-ingest
+      path: patterns/postgres-scan-ingest.md
+    - name: gold-obt-query
+      path: patterns/gold-obt-query.md
+    - name: anomaly-profiling-queries
+      path: patterns/anomaly-profiling-queries.md
+    reference:
+    - name: sql-dialect-notes
+      path: reference/sql-dialect-notes.md
+    - name: performance-and-explain
+      path: reference/performance-and-explain.md
+  fastapi:
+    name: FastAPI
+    description: FastAPI async web framework with Pydantic v2, dependency injection,
+      SSE
+    path: fastapi/
+    mcp_validated: '2026-06-26'
+    entry_points:
+      quick_reference: quick-reference.md
+    concepts:
+    - name: async-vs-sync
+      path: concepts/async-vs-sync.md
+      confidence: 0.95
+    - name: dependency-injection
+      path: concepts/dependency-injection.md
+      confidence: 0.95
+    - name: pydantic-boundaries
+      path: concepts/pydantic-boundaries.md
+      confidence: 0.95
+    patterns:
+    - name: route-design
+      path: patterns/route-design.md
+    - name: background-tasks
+      path: patterns/background-tasks.md
+    - name: sse-streaming
+      path: patterns/sse-streaming.md
+    reference:
+    - name: response-models
+      path: reference/response-models.md
+    - name: exception-handlers
+      path: reference/exception-handlers.md
+  mcp:
+    name: Model Context Protocol
+    description: "MCP \u2014 exposing analytics as typed tools (get_schema_info /\
+      \ execute_analytical_query / generate_report) over stdio/HTTP for Claude Desktop\
+      \ and other LLM hosts"
+    path: mcp/
+    mcp_validated: '2026-06-26'
+    entry_points:
+      quick_reference: quick-reference.md
+    concepts:
+    - name: mcp-protocol-model
+      path: concepts/mcp-protocol-model.md
+      confidence: 0.95
+    - name: tools-vs-resources
+      path: concepts/tools-vs-resources.md
+      confidence: 0.95
+    - name: transport-stdio-http
+      path: concepts/transport-stdio-http.md
+      confidence: 0.95
+    patterns:
+    - name: tool-schema-design
+      path: patterns/tool-schema-design.md
+    - name: analytical-tool-server
+      path: patterns/analytical-tool-server.md
+    - name: nl-to-sql-tool
+      path: patterns/nl-to-sql-tool.md
+    reference:
+    - name: server-sdk-api
+      path: reference/server-sdk-api.md
+    - name: tool-json-schema
+      path: reference/tool-json-schema.md
+  code-quality:
+    name: Code Quality
+    description: "Cross-tech universals \u2014 comments, dead code, security baseline.\
+      \ Grounded in by every closer."
+    path: code-quality/
+    mcp_validated: '2026-06-25'
+    entry_points:
+      quick_reference: quick-reference.md
+    concepts:
+    - name: comments
+      path: concepts/comments.md
+      confidence: 0.85
+    - name: dead-code
+      path: concepts/dead-code.md
+      confidence: 0.95
+    - name: security-universals
+      path: concepts/security-universals.md
+      confidence: 0.95
+    patterns: []
+    reference: []

@@ -1,0 +1,2 @@
+{"timestamp":"2026-06-26T01:32:27.919Z","module":"git","error":"git@github.com: Permission denied (publickey).\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n","severity":"warning"}
+{"timestamp":"2026-06-26T01:33:14.006Z","module":"git","error":"git@github.com: Permission denied (publickey).\r\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n","severity":"warning"}

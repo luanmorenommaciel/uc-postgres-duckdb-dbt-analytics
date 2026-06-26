@@ -1,0 +1,235 @@
+# Plan · dbt Medallion over DuckDB `raw.*`
+
+> **Execution model: FORK B — task-driven.** We do NOT hand the whole spec to one
+> autonomous agent and let it build the medallion end to end. We cut this plan
+> into **atomic tasks, each with its own eval**, and dispatch per task. Why FORK B
+> fits this build: the medallion is **deterministic and layered** — bronze→silver→
+> gold is a strict DAG where each model has a known input, a known output, and a
+> dbt test that passes or fails in isolation. Every step is independently
+> verifiable (a dbt model + its schema/data tests = one atomic, self-checking
+> task). A whole-spec autonomous run would blur the layer boundaries, hide which
+> step regressed, and make the per-layer evals unenforceable. Task-driven keeps
+> each defect-handling rule, each mart, and each contract column behind its own
+> green check. (Component B · Serve is FORK B for the same reason — see
+> `fast-api-mcp.plan`.)
+
+Component **A · Transform** from the decomposition. Sole writer of the analytical
+tables. Input contract: `raw.*` (frozen, verified). Output contract: `gold.*`
+(the seam consumed by Component B · Serve — see `fast-api-mcp.plan`).
+
+Plan altitude: layers, responsibilities, dependencies, build order, tests. No
+model SQL, no atomic tasks.
+
+---
+
+## Ground truth (the input boundary)
+
+`raw.*` lands defects **intact** — cleaning is this project's job, not the
+landing's. Four tables, plus run-level lineage stamps already present on every row:
+
+| raw table | business columns | stamps |
+|---|---|---|
+| `raw_customers` | customer_id, full_name, email, country, city, segment, created_at | `_ingested_at`, `_source_watermark` |
+| `raw_products` | product_id, sku, name, category, unit_price, cost, created_at | `_ingested_at`, `_source_watermark` |
+| `raw_orders` | order_id, customer_id, product_id, quantity, unit_price, total_amount, status, ordered_at | `_ingested_at`, `_source_watermark`, **`_schema_drift`** |
+| `raw_payments` | payment_id, order_id, method, amount, status, paid_at | `_ingested_at`, `_source_watermark` |
+
+Money is `DECIMAL` (never float), timestamps are tz-aware. The 14 generator
+defects are the threat model silver must neutralize. `_ingested_at` is the
+freshness anchor that must survive end-to-end to gold (spec **E3**).
+
+---
+
+## Layers
+
+Three dbt layers, one schema each, strictly stacked. Each layer reads only the
+layer directly below it.
+
+### Bronze — *clean & type* (`bronze.*`, views)
+
+One bronze model per raw table. Mechanical, **non-destructive**: standardize
+without dropping rows.
+
+- Carry `unit_price`/`total_amount`/`amount`/`cost` as-is — DECIMAL never recast.
+- Trim/normalize text (email lowercased, status trimmed), but **do not** reject
+  bad values yet — `negative_price`, `invalid_quantity`, `malformed_data` rows
+  pass through tagged, not deleted.
+- Resolve the `_schema_drift` flag into a clean lineage column; the link is
+  already `customer_id` (landing aliased it), so bronze just carries the flag.
+- Propagate `_ingested_at` forward unchanged — the freshness clock starts here.
+
+Bronze is a thin, 1:1, lossless typing layer. Views (no storage cost; always
+fresh off `raw.*`).
+
+### Silver — *conform & apply business rules* (`silver.*`, tables)
+
+Where the 14 defects are handled and the data becomes trustworthy. Per-entity
+conformed models plus quarantine.
+
+- **Dedup** — `duplicate_order` collapsed by a **business signature**, NOT by
+  `order_id`. Per Codex C2: the injector re-inserts the latest order verbatim with
+  a *new* `order_id`, so `order_id` stays unique while the duplicate row survives
+  and overcounts gold revenue. Dedup key = the non-PK attribute signature
+  (`customer_id, product_id, quantity, unit_price, total_amount, ordered_at`);
+  keep the lowest `order_id` per signature, route the rest to quarantine.
+- **Quarantine, not delete** — rows failing business rules (`negative_price`,
+  `invalid_quantity`, `destructive_fix` zeroed totals, `malformed_data` status)
+  routed to `silver.quarantine_*` with a reason code; clean rows flow on. Nothing
+  is silently dropped — quarantine is auditable.
+- **Referential conformance** — `orphan_payment` (FK to a non-existent order)
+  separated; `missing_customer` orders flagged.
+- **Canonical vocab — pinned to the verified source values (Codex C4).** The
+  real vocabularies, confirmed against `raw.*`:
+  - `orders.status`: **placed, shipped, delivered, returned, cancelled** — there
+    is NO raw `fulfilled` status. Any health "fulfilled rate" is a *derived*
+    metric, not a raw status, and needs the mapping below.
+  - `payments.status`: authorized, captured, failed, refunded.
+  - `payments.method`: bank_transfer, credit_card, debit_card, paypal, wallet.
+  - `customers.segment`: business, consumer, prime, wholesale.
+  - `products.category`: the 8 seed `CATEGORIES`.
+  - Out-of-vocab (e.g. `malformed_data`'s garbage status) → quarantine.
+- **Order-health mapping (defined HERE, not invented in serving).** Gold's health
+  rates derive from the pinned statuses via an explicit, business-approved map —
+  e.g. `delivered` ⇒ fulfilled; `placed`/`shipped` ⇒ in-flight; `returned`,
+  `cancelled` ⇒ their own rates. The exact map is **owner-gated** (VP Data) before
+  gold ships; silver exposes clean statuses, gold applies the map. This closes the
+  `fulfilled_rate` semantic gap Codex flagged in the serving plan.
+- **Derived correctness** — assert `total_amount = quantity × unit_price`;
+  mismatches (e.g. `destructive_fix`) quarantined.
+- Materialized as **tables** (silver is the heavy compute; gold reads it
+  repeatedly).
+
+Silver is the trust boundary: everything above it is assumed clean.
+
+### Gold — *serving-ready marts* (`gold.*`, tables)
+
+Pre-aggregated, business-grade marts shaped to the **frozen E4 question set**.
+This is the output contract Component B consumes — see the explicit table list in
+`fast-api-mcp.plan`. Gold turns a 12-minute scan (spec current state) into a
+sub-second lookup (spec **E2** target) by materializing the answers.
+
+Candidate marts (final list gated on the frozen E4 questions):
+
+| gold mart | grain | exposes (ties to spec) |
+|---|---|---|
+| `gold_revenue_by_category` | category × day | revenue, order count — exec reporting |
+| `gold_customer_segments` | customer / segment | LTV, order count, segment rollups |
+| `gold_order_health` | day | fulfilled/returned/cancelled rates, defect counts |
+| `gold_payment_reconciliation` | day | paid vs. order total, refund rate, orphan count |
+| `gold_freshness` | 1 per entity + rollup | `max(_ingested_at)`, `max(<event_ts>)`, **`event_to_reportable_lag`** → **E3** instrument |
+
+**The gold contract is OWNED HERE (Codex C3).** Component B does not invent gold
+columns — it consumes this contract. Each mart ships a dbt `schema.yml` declaring
+column names, types, nullability, and grain, enforced by dbt schema tests. The
+table above is the *catalogue*; the per-mart `schema.yml` is the *versioned
+contract* B compiles against. A column does not exist for B until it exists in a
+committed `schema.yml` here. (This replaces the prior arrangement where
+`fast-api-mcp.plan` named exact columns A had never committed to producing.)
+
+`gold_freshness` is not a business question — it is the **E3 measurement
+surface**. Per Codex C1: `_ingested_at` alone measures *land cadence*, which can
+report "fresh" while source business events are old or late-arriving. E3 requires
+**event→reportable lag**, so the mart carries BOTH clocks and exposes their
+difference:
+
+- `max(_ingested_at)` — when the last landing ran (batch clock).
+- `max(<event_ts>)` per entity — `max(ordered_at)`, `max(paid_at)`,
+  `max(created_at)` — the newest business event present (event clock).
+- `event_to_reportable_lag = _ingested_at − max(<event_ts>)` — the real E3 lag,
+  per entity, compared against a **pinned p95 window** (working default ≤5 min,
+  spec §6 — owner VP Data).
+
+A late-arriving or stalled source now shows a growing lag instead of a falsely
+green rebuild. The `_source_watermark` stamp already on every raw row is the
+event clock and is carried bronze→gold for exactly this comparison.
+
+---
+
+## Dependencies
+
+```
+raw.*  →  bronze.*  →  silver.*  →  gold.*
+(given)   (views)      (tables)     (tables, = the seam)
+```
+
+- Strictly linear, one direction. No layer reads above itself; no skip-level
+  reads (gold never touches bronze or raw).
+- dbt's `ref()` graph enforces this — the DAG *is* the dependency contract.
+- All four write through the **single `src/warehouse` connection contract**,
+  serialized **after `make land`** (single-writer invariant — land, then dbt,
+  never concurrent).
+- **Atomic gold publish (Codex C5).** Gold is not refreshed in place. dbt builds
+  marts into a staging schema, validates ALL of them (the gold tests below), then
+  publishes as ONE generation stamped with a shared `_gold_run_id`. Readers
+  (Component B) bind to the latest fully-published run id, so an in-progress dbt
+  run can never expose a mix of old and new marts. Test: every gold table shares
+  one `_gold_run_id`; no half-published generation is ever visible.
+- **`pytz` caveat**: dbt models are SQL, so they're safe materializing tz-aware
+  timestamps; the trap only bites Python consumers (relevant to Component B, not
+  here).
+
+---
+
+## Build order
+
+1. **dbt project scaffold** — profile points at the warehouse via `DUCKDB_DATABASE`
+   (reuse `src/warehouse` path rule); `raw` declared as sources with freshness
+   metadata off `_ingested_at`.
+2. **Bronze** — all four models + schema/type tests. Cheap, unblocks silver.
+3. **Silver** — conform + quarantine, per entity; the bulk of the logic and tests.
+4. **Gold** — marts last; **gated on the frozen E4 question set** (the one
+   unresolved input — drives the final mart list and grain).
+5. **Wire `make` targets** — `make build` (land → dbt run → dbt test), `make test`
+   (the Makefile's stubbed target, filled in here).
+
+Bronze and silver can proceed before E4 is frozen; **gold cannot finish until it
+is.** That's the gating edge.
+
+---
+
+## Tests that prove each layer
+
+dbt tests are the per-layer proof. Strategy: **invariant-rule tests** (not
+`_control`-ledger tests) — defects are silent by default, so we assert
+correctness by rules that must hold, independent of whether an injection was
+recorded.
+
+| Layer | Tests (what they prove) |
+|---|---|
+| **Bronze** | `not_null` PKs; `unique` PKs; row-count parity with `raw.*` (lossless); types preserved (DECIMAL/tz). Proves: clean typing dropped nothing. |
+| **Silver** | `relationships` orders→customers / payments→orders (FK integrity post-quarantine); `accepted_values` on status/segment/method/category; custom: `total_amount = quantity×unit_price`; `unit_price ≥ 0`, `quantity > 0`, `amount ≥ 0`; **dedup → `unique(business_signature)`** (NOT `unique(order_id)` — see C2; plus a regression test that injects `duplicate_order` and asserts the dup is collapsed); quarantine reconciles (clean + quarantined = bronze count, nothing vanished). Proves: the 14 defects are neutralized and accounted for. |
+| **Gold** | aggregates reconcile to silver (sum-of-mart = sum-of-source); no NULL measures; `gold_freshness` lag is computable and bounded; **every frozen E4 question maps to a mart that answers it** (coverage test). Proves: marts are correct and the serving contract is complete. |
+
+`dbt source freshness` on `raw` (off `_ingested_at`) is the **E3** gate at the
+project boundary: stale raw → loud failure before transform runs.
+
+---
+
+## Open questions
+
+| # | Item | Owner | Blocks build? |
+|---|---|---|---|
+| Q1 | **E4 question set** — frozen list of 10–15 questions; drives the gold mart list, grain, and the order-health map. | VP Data (spec §6) | **Yes — gold.** Bronze + silver proceed without it. |
+| Q2 | **Order-health mapping** — which statuses ⇒ fulfilled / in-flight / returned / cancelled rates (C4). | VP Data | **Yes — `gold_order_health`** only. |
+| Q3 | **Freshness p95 window** — pin the number for `event_to_reportable_lag` (C1; default ≤5 min, spec §6). | VP Data / CTO | No — default holds; tune later. |
+| Q4 | **Quarantine vs. drop policy** — confirmed *quarantine* (auditable); flag if demo wants hard drops. | Us (default chosen) | No. |
+| Q5 | **Accepted risk: literal KPIs (E2/E5/E6) are production measurements**, not reproducible in a local DuckDB demo. We build the property (pre-aggregation, isolation), not the production number. | Us / CTO | No — scope-bound, recorded. |
+
+**Accepted risks (recorded, not fixed):**
+- **Freshness = land cadence, not streaming** — we do NOT rebuild the verified
+  full-refresh landing; `event_to_reportable_lag` (C1 fix) makes staleness
+  *visible* within that cadence, which satisfies E3's "minutes, not hours" intent
+  without a CDC rebuild. Owner: us; reason: landing is frozen + verified.
+- **E1 is satisfied by construction** (dbt never touches Postgres), not by a
+  captured peak-load baseline — the spec's measured E1 belongs to a production
+  cutover out of this repo's scope. Owner: CTO; reason: §3 out-of-scope.
+
+## Spec traceability
+
+- **E2** (queries <5s) — gold pre-aggregation is the mechanism.
+- **E3** (freshness, minutes) — `_ingested_at` carried bronze→gold; `gold_freshness`
+  mart + `dbt source freshness` are the instruments.
+- **E4** (frozen question set) — gold marts are shaped 1:1 to the questions;
+  coverage test proves completeness.
+- **E1** (isolation) — inherited by construction: dbt reads `raw.*` in DuckDB,
+  never touches Postgres; the source can't be degraded by transform.

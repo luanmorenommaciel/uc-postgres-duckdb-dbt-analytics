@@ -1,0 +1,7 @@
+{"schema_version":1,"ts":"0","task":"T-20260625-bronze-views","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"1","task":"T-20260625-silver-conform","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"2","task":"T-20260625-gold-marts","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"3","task":"T-20260625-gold-freshness","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"4","task":"T-20260625-gold-atomic-publish","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"5","task":"T-20260625-api-fastapi","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}
+{"schema_version":1,"ts":"6","task":"T-20260625-mcp-tools","event":"created","author":"luanmoreno","source":"sketch/duckdb-dbt-med-arch.plan","effort":"M","agent":"any","mode":"batch"}

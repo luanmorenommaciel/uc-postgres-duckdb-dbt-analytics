@@ -1,0 +1,175 @@
+# Plan · FastAPI / MCP Serving Layer over `gold.*`
+
+> **Execution model: FORK B — task-driven.** We do NOT hand the whole spec to one
+> autonomous agent. We cut this plan into **atomic tasks, each with its own eval**,
+> and dispatch per task. Why FORK B fits this build: the serving layer is a **thin,
+> stateless surface over a frozen contract** — one query-core function per mart,
+> one endpoint and one tool per question, each independently testable (contract
+> test, endpoint test, tool-vs-endpoint parity, isolation check). Every unit
+> passes or fails on its own eval; nothing requires a single agent holding the
+> whole picture. Task-driven keeps each endpoint/tool behind its own green check
+> and lets the read-only/gold-only isolation invariant be enforced per task.
+> (Component A · Transform is FORK B for the same reason — see
+> `duckdb-dbt-med-arch.plan`.)
+
+Component **B · Serve** from the decomposition. **Read-only** consumer of the
+warehouse. Input contract: `gold.*` (the seam produced by Component A — see
+`duckdb-dbt-med-arch.plan`). Output: answers to the frozen E4 question set, over
+two transports.
+
+Plan altitude: components, the gold interface each consumes, dependencies, build
+order. No handler code, no atomic tasks.
+
+---
+
+## The interface this layer consumes (the seam — hard boundary)
+
+The serving layer reads **only `gold.*`**, through **`connect_read_only()`**. It
+never references `silver.*`, `bronze.*`, `raw.*`, or Postgres. If an answer needs
+data not in gold, the fix is a **new gold mart in Component A**, never a deeper
+read here. This is what makes spec **E1** (storefront isolation) true by
+construction: a read-only gold reader cannot contend with or corrupt anything
+upstream.
+
+**The gold contract is OWNED BY COMPONENT A, not declared here (Codex C3).** B
+does not define gold columns — it binds to the per-mart `schema.yml` contract in
+`duckdb-dbt-med-arch.plan`. The table below is the *expected consumption surface*;
+it is provisional until the matching `schema.yml` is committed in A. A column is
+not consumable until A has declared it with a type. Final shape is gated on the
+frozen E4 set.
+
+| gold table | columns consumed (pending A's `schema.yml`) | served by |
+|---|---|---|
+| `gold_revenue_by_category` | category, day, revenue, order_count | `/revenue/by-category`, tool `revenue_by_category` |
+| `gold_customer_segments` | segment, customer_id, ltv, order_count | `/customers/segments`, tool `customer_segments` |
+| `gold_order_health` | day, + status-rate columns **per A's pinned vocab map** (Codex C4 — `fulfilled_rate` is NOT a raw status; the delivered/shipped/placed→health mapping is defined in A, not invented here), defect_count | `/orders/health`, tool `order_health` |
+| `gold_payment_reconciliation` | day, paid_total, order_total, refund_rate, orphan_count | `/payments/reconciliation`, tool `payment_reconciliation` |
+| `gold_freshness` | max_ingested_at, max_event_ts, **event_to_reportable_lag** (Codex C1 — not bare `lag_seconds`) | `/freshness`, tool `freshness` |
+
+No endpoint or tool issues a JOIN below gold or an ad-hoc aggregate — gold is
+pre-shaped; serving does lookup + filter + serialize only. Any answer needing a
+column not in A's contract is a **new mart request to A**, never a deeper read.
+
+---
+
+## Components
+
+### B1 · Query core (shared)
+
+The one place gold is queried. One read-only function per gold mart returning a
+typed row set. Both transports call this — they differ only in protocol framing,
+never in SQL. Owns: the `connect_read_only()` handle, parameter validation
+(date ranges, segment filters), and the **`pytz` guard** — cast tz-aware
+timestamps to text/epoch at the SQL boundary so no Python consumer trips DuckDB's
+pytz requirement (the trap proven during brownfield verification).
+
+### B2 · FastAPI transport
+
+HTTP/JSON, one endpoint per frozen question (table above). Each endpoint =
+thin adapter over a B1 function: validate query params → call core → serialize.
+Plus `/health` (liveness) and `/freshness` (the **E3** surface — reports
+`gold_freshness.lag_seconds` so freshness is observable, not asserted). For
+dashboards and programmatic callers.
+
+### B3 · MCP transport
+
+The **same** questions as agent-callable tools — one tool per B1 function, same
+inputs/outputs as the matching endpoint. Lets a non-engineer ask in natural
+language and get a correct answer with **no new report build** — this is the
+literal **E4 self-serve** requirement. Tool descriptions name the question each
+answers so an LLM can route intent → tool.
+
+> B2 and B3 stay **one component, two transports** as long as they share B1
+> unchanged. Split only if MCP needs materially different logic (e.g. multi-step
+> conversational resolution) than HTTP — revisit if that asymmetry appears.
+
+---
+
+## Dependencies
+
+```
+gold.*  →  B1 query core  →  B2 FastAPI
+(given,    (read-only)    →  B3 MCP
+ = seam)
+```
+
+- B2 and B3 both depend on B1; neither depends on the other.
+- B1 depends only on the **gold schema** (table/column shapes), not on dbt's
+  internals — so B can be built in full against the frozen contract while A's
+  silver/gold SQL is still in flux.
+- Whole layer depends on **`connect_read_only()`** from `src/warehouse` — readers
+  may run concurrently with each other and a single writer (dbt), per the
+  warehouse concurrency contract.
+- **Atomic-generation read (Codex C5).** The prior claim "no serialization needed"
+  was wrong about *cross-mart consistency*: mid-dbt-run, one endpoint could read a
+  refreshed mart while another reads a stale/replaced one, yielding inconsistent
+  cross-endpoint answers. B consumes the **published generation only** — every gold
+  mart carries a `_gold_run_id` (set by A's atomic publish; see
+  `duckdb-dbt-med-arch.plan`), and B reads against the latest *fully-published*
+  run id. A request that would straddle two generations reads the prior complete
+  one, never a mixed set. This is a read-side contract, not a lock.
+
+---
+
+## Build order
+
+1. **Freeze the gold contract** — the column list above, locked with Component A.
+   This is the gating input; everything below is buildable the moment it's set.
+2. **B1 query core** — one function per mart against frozen gold; pytz guard;
+   contract test per function (shape matches the table above).
+3. **B2 FastAPI** — endpoints as thin adapters over B1; `/health`, `/freshness`.
+4. **B3 MCP** — tools wrapping the same B1 functions; intent-routable descriptions.
+5. **Wire `make` target** — `make serve` (FastAPI) / MCP entrypoint; reuse
+   `DUCKDB_DATABASE` path rule.
+
+B1 is the long pole; B2/B3 are thin once it exists. Steps 3–4 are parallelizable.
+
+---
+
+## Tests that prove the layer
+
+| Scope | Tests (what they prove) |
+|---|---|
+| **B1 contract** | each function returns exactly the gold columns above; tz timestamps serialize without pytz error; empty-gold → empty result, not a crash. Proves: the seam is honored, no below-gold reads. |
+| **B2 endpoints** | status codes; param validation (bad date → 400); response schema per endpoint; **read-only enforced** (no write path exists). Proves: HTTP surface correct + isolated. |
+| **B3 tools** | each tool answers its E4 question with a correct value (cross-checked vs. the matching endpoint — same B1 core ⇒ same answer); intent routing. Proves: **E4 self-serve** — every frozen question answerable unaided. |
+| **Isolation (E1)** | static/integration check: the layer opens only `connect_read_only()`, references only `gold.*`. Proves: serving can never degrade source or warehouse. |
+
+The **E4 coverage matrix** spans both plans and is a build-gate artifact (Codex
+C6), not just a test. Once the E4 list is frozen, produce a table:
+
+`question → gold mart/columns (A) → endpoint (B2) → MCP tool (B3) → acceptance query`
+
+The five candidate marts are **provisional**, not the final serving surface — the
+matrix is what proves completeness. Until every frozen question has a green row,
+gold + serving are **blocked, not partially buildable** (a polished 5-tool API
+that can't answer the real acceptance set is the failure mode this prevents). The
+matrix must show 100% question coverage before B is called done.
+
+---
+
+## Open questions
+
+| # | Item | Owner | Blocks build? |
+|---|---|---|---|
+| Q1 | **E4 question set** — fixes the final endpoint/tool list and the coverage matrix (C6). | VP Data (spec §6) | **Yes — final surface.** B1 query-core scaffolding can start against the provisional contract. |
+| Q2 | **Frozen gold contract** — A's per-mart `schema.yml` (C3). B1 binds to it; until committed, B's column list is provisional. | Component A | **Yes — B1 functions** can't be finalized without it. |
+| Q3 | **`_gold_run_id` publish mechanism** — A must emit it for B's atomic-generation read (C5). | Component A | **Yes — `/freshness` consistency** + cross-endpoint coherence. |
+| Q4 | **FastAPI + MCP split risk** — held as one component (shared B1); revisit only if MCP needs logic HTTP doesn't. | Us | No — default holds. |
+
+**Accepted risks (recorded, not fixed):**
+- **E2/E1 are inherited, not independently measured here** — serving does lookup
+  over pre-aggregated gold (E2 mechanism) and is read-only/gold-only (E1 by
+  construction). The literal latency/availability KPIs are production
+  measurements out of this repo's scope. Owner: CTO; reason: §3 out-of-scope.
+
+## Spec traceability
+
+- **E4** (self-serve, no new report) — B3 MCP tools + B2 endpoints *are* the
+  self-serve surface, one per frozen question.
+- **E2** (queries <5s) — inherited: serving does lookup over pre-aggregated gold,
+  no heavy scan at request time.
+- **E3** (freshness) — `/freshness` + `freshness` tool expose
+  `gold_freshness.lag_seconds` as the observable instrument.
+- **E1** (isolation) — read-only, gold-only, by construction; proven by the
+  isolation test.
