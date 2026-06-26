@@ -15,6 +15,7 @@ dependencies = [
 dev = [
     "ruff>=0.9",
     "pytest>=8",
+    "dbt-duckdb>=1.10.1",
 ]
 
 [tool.uv]

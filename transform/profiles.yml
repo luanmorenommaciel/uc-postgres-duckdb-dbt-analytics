@@ -1,0 +1,8 @@
+transform:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_DATABASE', '/Users/luanmoreno/GitHub/uc-postgres-duckdb-dbt-analytics/src/warehouse/warehouse.duckdb') }}"
+      schema: main
+      threads: 4
