@@ -10,6 +10,7 @@
 #
 # Optional flags:
 #   --agent <name>         Agent hint (default: any)
+#   --profile <lvl>        Profile lite|standard|full applied to every spec (default: standard)
 #   --source-note <path>   Source provenance applied to every spec
 #   --queue                Write to tasks/queue/ instead of tasks/
 #   --dry-run              Print what would be created without writing files
@@ -36,6 +37,7 @@ SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INTENT_FILE=""
 EFFORT=""
 AGENT="any"
+PROFILE="standard"
 SOURCE_NOTE="(none)"
 QUEUE=false
 DRY_RUN=false
@@ -55,6 +57,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --agent)
       AGENT="${2:-}"
+      shift 2
+      ;;
+    --profile)
+      PROFILE="${2:-standard}"
       shift 2
       ;;
     --source-note)
@@ -109,6 +115,11 @@ if [[ "$EFFORT" != "S" && "$EFFORT" != "M" ]]; then
   echo "ERROR: effort must be S or M. L/XL belong in AgentSpec SDD." >&2
   exit 1
 fi
+
+case "$PROFILE" in
+  lite|standard|full) ;;
+  *) echo "ERROR: profile must be lite, standard, or full (got: '$PROFILE')" >&2; exit 1 ;;
+esac
 
 # Resolve output directory relative to git root
 GIT_ROOT=""
@@ -217,6 +228,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     -e "s|{{ID}}|$ID|g" \
     -e "s|{{TITLE}}|$description|g" \
     -e "s|{{STATUS}}|ready|g" \
+    -e "s|{{PROFILE}}|$PROFILE|g" \
     -e "s|{{EFFORT}}|$EFFORT|g" \
     -e "s|{{BUDGET_ITERATIONS}}|15|g" \
     -e "s|{{AGENT}}|$AGENT|g" \
@@ -228,7 +240,12 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     -e "s|{{WHY_ONE_PARAGRAPH}}|{{TODO: 1-2 sentence why}}|g" \
     -e "s|{{GOAL_ONE_PARAGRAPH}}|{{TODO: concrete success in one paragraph}}|g" \
     -e "s|{{CONTEXT_LEAN_MAX_100_LINES}}|{{TODO: lean context, link to existing docs}}|g" \
-    -e "s|{{AGENT_PRODUCES}}|code \\| docs \\| config \\| tests|g" \
+    -e "s|{{B1_GIVEN}}|{{TODO: precondition}}|g" \
+    -e "s|{{B1_WHEN}}|{{TODO: action}}|g" \
+    -e "s|{{B1_THEN}}|{{TODO: observable outcome}}|g" \
+    -e "s|{{B2_GIVEN}}|{{TODO: precondition}}|g" \
+    -e "s|{{B2_WHEN}}|{{TODO: action}}|g" \
+    -e "s|{{B2_THEN}}|{{TODO: observable outcome}}|g" \
     -e "s|{{DO_NOT_TOUCH_LIST}}|- {{TODO: exact path or (none)}}|g" \
     "$TEMPLATE" > "$TARGET"
 

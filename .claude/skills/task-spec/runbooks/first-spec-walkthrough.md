@@ -33,8 +33,8 @@ bash /path/to/.claude/skills/task-spec/scripts/install.sh --target "$TMP"
 You should see:
 
 ```
-Installing task-spec v2.1.0 → /tmp/.../.claude/skills/task-spec
-Done. task-spec v2.1.0 installed at:
+Installing task-spec v3.1.0 → /tmp/.../.claude/skills/task-spec
+Done. task-spec v3.1.0 installed at:
   /tmp/.../.claude/skills/task-spec
 ```
 
@@ -42,7 +42,7 @@ Verify the version is what you expect:
 
 ```bash
 "$TMP/.claude/skills/task-spec/scripts/validate-task-spec.sh" --version
-# task-spec v2.1.0
+# task-spec v3.1.0
 ```
 
 If the version doesn't match, you're running an older copy — find the right install source.
@@ -74,7 +74,7 @@ You should see:
 
 ```
 Spec written: /tmp/.../tasks/T-20260602-add-health-endpoint.md
-  status: ready  outdir: /tmp/.../tasks  task_spec_version: 2.1.0
+  status: ready  outdir: /tmp/.../tasks  task_spec_version: 3.1.0
 
 Next steps:
 
@@ -145,7 +145,7 @@ bash "$TMP/.claude/skills/task-spec/scripts/validate-task-spec.sh" tasks/T-*.md
 Expected output:
 
 ```
-OK: tasks/T-20260602-add-health-endpoint.md is a valid Task-Spec v2
+OK: tasks/T-20260602-add-health-endpoint.md is a valid Task-Spec v3 (profile: standard → A2A: submitted)
 ```
 
 If you see `FAIL:`, fix the listed errors and re-run. Common errors:
@@ -198,7 +198,7 @@ A `signed_off: true` spec is ready to hand to an autonomous engine. The dispatch
 If you got this far, **the skill is correctly installed and your first spec is signed off**. You can now:
 
 1. Use this as a template for real specs in your project's `tasks/` directory.
-2. Run `tests/test-task-spec-skill.sh --suite fixtures` to verify the lint suite (should report 8/8 pass).
+2. Run `tests/test-task-spec-skill.sh --suite fixtures` to verify the lint suite (should report 15/15 pass).
 3. Clean up the tempdir: `rm -rf "$TMP"`.
 
 ---
@@ -207,8 +207,8 @@ If you got this far, **the skill is correctly installed and your first spec is s
 
 | Symptom | Likely cause | Action |
 |---------|--------------|--------|
-| `task-spec v2.0.0` from `--version` | Old install path is shadowing | `which validate-task-spec.sh` — install the v2.1 copy or call by absolute path |
-| `OK: ...v2` but expected v2.1 | Validator message format hasn't bumped yet | Cosmetic; the format is v2.1 — see SKILL.md frontmatter version field |
+| older `task-spec vX.Y.Z` from `--version` | Old install path is shadowing | `which validate-task-spec.sh` — install the v3.1 copy or call by absolute path |
+| `OK: ...v2` on a generated spec | A v2 spec (or an older generator) — freshly generated specs are `format_version: 3` | Cosmetic for a real v2 spec; regenerate with the v3.1 generator if you expected v3 |
 | `FAIL: signed_off: true but signed_off_by is empty` | You hand-edited `signed_off:` to `true` | Set it back to `false`; run the gate to stamp properly |
 | `inverted grep -c pattern: ...` | An eval uses the foot-gun | Replace with `! grep -q PATTERN file` (see Step 4) |
 | `flock: command not found` (macOS) | Missing `flock(1)` on default macOS | The test harness ships a shim; for direct script calls install via `brew install util-linux` |

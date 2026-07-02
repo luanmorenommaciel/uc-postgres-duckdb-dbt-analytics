@@ -58,31 +58,47 @@ bash ~/.claude/skills/task-spec/scripts/backup-backlog.sh
 id: T-YYYYMMDD-kebab-slug
 title: One-line imperative
 status: ready                  # ready | in-progress | blocked | done | parked
+format_version: 3
+profile: standard              # lite | standard | full (absent → standard)
 effort: S                      # S | M (L/XL refused; route to AgentSpec)
 budget_iterations: 15
 agent: any                     # any | python-developer | ...
+parent: (none)                 # FEATURE-altitude PRD/SDD this task distills from
 depends_on: []
 touches_paths:
   - path/to/file
 source_note: notes/...md
 created: 2026-05-19T00:00:00Z
 tags: [...]
+signed_off: false              # flipped true ONLY by safe-to-delegate.sh --stamp
+signed_off_by: (none)
+signed_off_at: (none)
+accepted: false                # flipped true by accept-task.sh AFTER execution
 ---
 ```
 
 ---
 
-## The 4 zones
+## The v3 zones
 
 ```text
-Zone 1: ## Goal + ## Context        (lean, ≤100 lines)
-Zone 2: ## Success Criteria         (≥3 runnable bash evals)
-        ## Validation Card          (YAML mirror)
-        ## Exit Check               (combined bash one-liner)
-Zone 3: ## Anti-Patterns            (specific don'ts)
-        ## Do-Not-Touch             (exact paths)
-Zone 4: ## Open Questions           (admit unknowns)
+Intent:        ## Goal + ## Context          (lean, ≤100 lines)
+Behavior:      ## Behavior                   (B-1, B-2 … Given/When/Then; standard/full)
+Contract:      ## Success Criteria           (≥3 runnable bash evals; each verifies: [B-N])
+               ## Validation Card            (YAML mirror; success_criteria + retry + agent_contract)
+               ## Exit Check                 (combined bash one-liner)
+Rollback:      ## Rollback Plan              (reversal steps; required at full)
+Observability: ## Observability Hooks        (duration/metric/alert; required at full)
+Guardrails:    ## Anti-Patterns              (specific don'ts)
+               ## Do-Not-Touch               (exact paths)
+Operations:    ## Open Questions             (admit unknowns)
 ```
+
+Profiles scale which zones are required (`lite` < `standard` < `full`); the
+irreducible core at every profile is **Goal + Success Criteria + Exit Check**.
+For `standard`/`full`, the **behavior ↔ eval** chain is enforced both ways (no
+orphan B-N, no orphan eval). See [concepts/profiles.md](concepts/profiles.md)
+and [concepts/six-zones.md](concepts/six-zones.md).
 
 ---
 
@@ -109,29 +125,12 @@ eval_4() { pytest -q tests/path; }           # tests     (30s)
 
 ---
 
-## v2 / v3 roadmap (deferred concepts)
+## Version history
 
-**v2** will add:
-- `budget_usd`, `budget_time` (cost ceilings)
-- `isolation_class` (worktree / branch / shared)
-- `schedulability` (parallel-safe / serial-after)
-- `circuit_breaker` (explicit field)
-- `precondition` (external blockers)
-- `assumptions` (preconditions assumed true)
-- `rollback_plan` (recovery doc)
-- `observability_emit` (what to log)
-
-**v3** will add:
-- `confidence_threshold` (per-task)
-- `review_mode` (auto / human-review / dry-run)
-- `decisions_deferred` (late binding)
-- `escalation_path` (when to ask)
-- `kb_citations` (link to project KB)
-- `mcp_validation_stamp` (recency proof)
-- `eval_determinism` (formal property check)
-- `eval_explainability` (per-eval rationale)
-
-v2.1 is stable. Future format changes will be additive (backward-compatible); see CHANGELOG.md.
+The format ships at v3 today (HMAC sign-off envelope, effort-scaled profiles, the
+Behavior zone + traceability, conformance levels, `accept-task.sh`, `requires:`
+acceptance gate, `backend_metadata`). For what shipped in each release, see
+[CHANGELOG.md](../CHANGELOG.md).
 
 ---
 

@@ -1,6 +1,6 @@
 # Eval-Driven Development (EDD)
 
-> **Purpose**: The methodology behind Task-Spec v2.1. Specs that verify themselves.
+> **Purpose**: The methodology behind Task-Spec v3. Specs that verify themselves.
 > **Confidence**: HIGH (foundational principle)
 > **MCP Validated**: 2026-05-19
 
@@ -53,8 +53,9 @@ The human enters at intent-setting and PR-review. Not in the middle.
 ### 3. Vendor-portable contract
 
 Markdown + YAML + bash is the universal substrate. Any agentic tool that can
-read markdown, parse YAML, and execute bash can consume a Task-Spec:
-Claude, Codex, Kimi, Cursor, taskship, anthive, manual humans, future tools.
+read markdown, parse YAML, and execute bash can consume a Task-Spec — any
+conformant engine (e.g. Claude, Codex, Cursor — adapters in
+runbooks/dispatch-recipes/), a manual human, or a future tool.
 
 This eliminates vendor lock-in at the unit-of-work layer.
 

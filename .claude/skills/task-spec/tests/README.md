@@ -9,6 +9,30 @@ bash .claude/skills/task-spec/tests/test-task-spec-skill.sh
 The suite is fully self-contained and runs in a temporary directory. It does **not**
 read or write the real `tasks/` backlog.
 
+## Test scripts (6)
+
+| Script | Covers |
+|--------|--------|
+| `test-task-spec-skill.sh` | End-to-end author flow (generate → validate → transition → rebuild → archive); `--suite fixtures` and `--suite hmac` selectors |
+| `test-hmac-envelope.sh` | Key-optional HMAC sign-off envelope: Tier-1/2/3 degrade, injection-safe field writes, `.git/info` key fallback |
+| `test-extractor-fuzz.sh` | Adversarial fuzz of the extract-and-run path (heredoc-heavy bodies; never-hang / never-leak-raw-error invariants) |
+| `test-bash-portability.sh` | bash-3.2 floor: core gate path + conformance runner carry no bash-4-only constructs |
+| `test-portability-e2e.sh` | Cross-engine equivalence (Python vs TypeScript reference consumers) + schema fidelity |
+| `test-v3-closed-loop-e2e.sh` | v3 closed loop: author → gate → dispatch → execute → `accept-task.sh` |
+
+## Conformance suite
+
+`tests/conformance/` ships the vendored executor-conformance suite — **6**
+`T-conformance-*.md` fixtures (one per contract clause), the reference driver
+`run_conformance.sh`, and the reference self-adapter `adapters/self.sh`. See
+[conformance/README.md](conformance/README.md) for the vendoring protocol.
+
+## Regression fixtures
+
+`tests/fixtures/` holds **17** `T-*.md` regression fixtures (golden, hand-stamped,
+inverted-eval variants, envelope-tampering cases) plus `oracle.json` declaring the
+expected verdict per fixture. Consumed by `test-task-spec-skill.sh --suite fixtures`.
+
 ## What is covered
 
 | Step | Script | Assertion |

@@ -1,8 +1,9 @@
-# task-spec — Cornerstone CAW for Task-Spec v2.2
+# task-spec — Cornerstone CAW for Task-Spec v3
 
-> The atomic, vendor-portable, self-verifying unit of work for autonomous
-> agentic systems. Produces task specs that any agent (Claude, Codex, Kimi,
-> taskship, anthive, /goal, manual humans) can pick up, execute, and verify.
+> The atomic, vendor-neutral, self-verifying unit of work for autonomous
+> agentic systems. Produces task specs that any conformant engine (e.g. Claude,
+> Codex, Cursor — adapters in runbooks/dispatch-recipes/) or a manual human can
+> pick up, execute, and verify.
 
 ---
 
@@ -12,7 +13,7 @@ Every AI coding tool today consumes some form of "task." Most of those tasks
 are PRDs — written for humans, interpreted by humans, success judged by humans.
 That makes agents non-autonomous: they need a human in the middle of the loop.
 
-**Task-Spec v2.2 fixes that.** Each Task-Spec carries its own runnable bash
+**Task-Spec v3 fixes that.** Each Task-Spec carries its own runnable bash
 success criteria. The agent reads the spec, executes the work, runs the evals,
 and loops on failure — entirely without human intervention. Humans enter at
 intent-setting and PR-review only.
@@ -52,6 +53,8 @@ After stamping see [runbooks/dispatching-a-task-spec.md](runbooks/dispatching-a-
 id: T-20260519-add-health-endpoint
 title: Add /health endpoint to api server
 status: ready
+format_version: 3
+profile: standard
 effort: S
 budget_iterations: 10
 agent: any
@@ -62,6 +65,7 @@ touches_paths:
 source_note: notes/2026-05-19-monitoring.md
 created: 2026-05-19T14:00:00-0300
 tags: ["api", "monitoring"]
+signed_off: false
 ---
 
 > **Why:** Load balancer health checks fail because there's no /health endpoint.
@@ -74,6 +78,13 @@ Add a `/health` endpoint returning `{"status":"ok"}` with HTTP 200.
 
 FastAPI server at `src/api/server.py`. K8s probes at `infra/k8s/api.yaml`
 already reference `/health` (currently 404).
+
+## Behavior
+
+- **B-1** — GIVEN the api server is running WHEN a client GETs `/health` THEN it
+  responds HTTP 200 with body `{"status":"ok"}`.
+- **B-2** — GIVEN the new endpoint exists WHEN the test suite runs THEN a
+  regression test for `/health` passes.
 
 ## Success Criteria
 
@@ -97,9 +108,9 @@ eval_3() {
 
 ```yaml
 success_criteria:
-  - {id: eval_1, description: "Server starts cleanly", runnable: bash, terminal: true, expected_duration_sec: 3}
-  - {id: eval_2, description: "/health returns 200 + correct JSON", runnable: bash, terminal: true, expected_duration_sec: 2}
-  - {id: eval_3, description: "Test for /health passes", runnable: bash, terminal: true, expected_duration_sec: 5}
+  - {id: eval_1, description: "Server starts cleanly", runnable: bash, check_type: deterministic, verifies: [B-1], terminal: true, expected_duration_sec: 3}
+  - {id: eval_2, description: "/health returns 200 + correct JSON", runnable: bash, check_type: deterministic, verifies: [B-1], terminal: true, expected_duration_sec: 2}
+  - {id: eval_3, description: "Regression test for /health passes", runnable: bash, check_type: deterministic, verifies: [B-2], terminal: true, expected_duration_sec: 5}
 
 retry_policy:
   max_iterations: 10
@@ -107,10 +118,20 @@ retry_policy:
   on_terminal_failure: park_with_context
 
 agent_contract:
-  read: [intent, contract, guardrails, operations]
-  produce: code + tests
-  verify: run all success_criteria
-  emit: pass | fail | retry_with_reason
+  version: 2
+  read: [intent, behavior, contract, guardrails, operations]
+  produce:
+    - code
+    - tests
+  required_tools: [git, bash, python3]
+  timeout_minutes: 30
+  sandbox_type: host
+  emit:
+    - pass
+    - fail
+    - retry_with_reason
+    - parked_with_context
+  backend_metadata: {}
 ```
 
 ## Exit Check
@@ -133,7 +154,9 @@ eval_1 && eval_2 && eval_3
 (none — fully specified)
 ```
 
-That's a complete Task-Spec v2.2. ~80 lines. Any agent can pick it up.
+That's a complete, validating standard-profile Task-Spec v3 (~95 lines): both
+behaviors are eval-covered (B-1 by eval_1+eval_2, B-2 by eval_3) and every eval
+maps to a behavior. Any conformant engine can pick it up.
 
 ---
 
@@ -155,7 +178,7 @@ Full spec: [references/concepts/task-spec-v1.md](references/concepts/task-spec-v
 
 ---
 
-## The 18 load-bearing concepts (v2.2)
+## The 18 load-bearing concepts (v3)
 
 | Zone | Concepts |
 |------|----------|
@@ -190,8 +213,9 @@ on_terminal_state:
   budget_exhausted: status -> parked
 ```
 
-This is what makes Task-Spec portable across Claude, Codex, Kimi, taskship,
-anthive, and manual execution. Full spec: [references/concepts/agent-contract.md](references/concepts/agent-contract.md)
+This is what makes Task-Spec portable across any conformant engine (e.g. Claude,
+Codex, Cursor — adapters in runbooks/dispatch-recipes/) and manual execution.
+Full spec: [references/concepts/agent-contract.md](references/concepts/agent-contract.md)
 
 ---
 
@@ -235,7 +259,7 @@ Or invoke via Claude: `/task-spec "verify our langfuse stack ingests OTEL traces
 bash ~/.claude/skills/task-spec/scripts/validate-task-spec.sh tasks/T-XXX.md
 ```
 
-Checks structural rules. Exit 0 = valid v2.2. Non-zero = errors listed. **Note:** this is the pre-gate linter only — see [runbooks/dispatching-a-task-spec.md](runbooks/dispatching-a-task-spec.md) for the autonomy contract via `safe-to-delegate.sh --stamp`.
+Checks structural rules. Exit 0 = valid v3. Non-zero = errors listed. **Note:** this is the pre-gate linter only — see [runbooks/dispatching-a-task-spec.md](runbooks/dispatching-a-task-spec.md) for the autonomy contract via `safe-to-delegate.sh --stamp`.
 
 ---
 
@@ -322,13 +346,13 @@ What people try that doesn't work:
 - Skill name: `task-spec` (the format IS the name; OpenAPI Spec / TypeSpec convention)
 - Agent name: `task-architect` (the judgment layer)
 - File pattern: `T-YYYYMMDD-<kebab-slug>.md`
-- Format version: v2.2 (current release v2.2.1; see CHANGELOG.md for version history; future format changes will be additive)
+- Format version: v3 (current release v3.1.0; see CHANGELOG.md for version history; future format changes will be additive)
 
 ---
 
 ## Roadmap
 
-The format ships at v2.2 today, with v2.2.1 the current patch release; see [CHANGELOG.md](CHANGELOG.md) for what shipped in each release. The v2.2 release added the key-optional HMAC sign-off envelope (`signed_off_sig`); v2.2.1 fixed the eval-runner stdin-hang. Format changes that have shipped (budget_iterations, precondition, execution_backend, signed_off, signed_off_sig, creates_paths) are documented in [references/concepts/task-spec-v1.md](references/concepts/task-spec-v1.md) (filename retained for link stability — the document covers the current v2.2 format).
+The format ships at v3.1.0 today; see [CHANGELOG.md](CHANGELOG.md) for what shipped in each release. The v3.1.0 release added the `--gold-sanity` and `requires:` acceptance gates, the canonical A2A v1.0 `TaskState` dispatcher (`ts_a2a_state_v1`), `depends_on` DAG cycle detection, a decomposition runbook + concept, the published JSON Schema (Draft 2020-12), and the generic `backend_metadata` field (replacing `codex_metadata`/`kimi_metadata`). The v3.0.0 release added effort-scaled profiles, the Behavior zone with behavior↔eval traceability, the `accept-task.sh` post-execution acceptance gate, conformance levels L0/L1/L2, and the open-string `execution_backend`; v2.2 added the key-optional HMAC sign-off envelope (`signed_off_sig`) and v2.2.1 fixed the eval-runner stdin-hang. Format changes that have shipped (budget_iterations, precondition, execution_backend, signed_off, signed_off_sig, creates_paths, profile, behavior, accepted, requires, baseline_ref, backend_metadata) are documented in [references/concepts/task-spec-v1.md](references/concepts/task-spec-v1.md) (filename retained for link stability — the document covers the current v3 format).
 
 ---
 

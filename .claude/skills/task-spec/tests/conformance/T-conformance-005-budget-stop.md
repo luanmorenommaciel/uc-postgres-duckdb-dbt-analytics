@@ -113,8 +113,7 @@ agent_contract:
   emit:
     - parked_with_context
     - fail
-  codex_metadata: {}
-  kimi_metadata: {}
+  backend_metadata: {}
 ```
 
 ## Exit Check

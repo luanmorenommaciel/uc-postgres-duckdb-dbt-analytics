@@ -1,6 +1,6 @@
-# Task-Spec v2.1.1 — Machine-Readable Schemas
+# Task-Spec v3 — Machine-Readable Schemas
 
-> **Purpose:** JSON Schema (draft 2020-12) definitions for the two YAML blocks in a Task-Spec file: the top-level frontmatter, and the inner `validation_card`. Together they make Task-Spec v2.1.1 machine-consumable from any language.
+> **Purpose:** JSON Schema (draft 2020-12) definitions for the two YAML blocks in a Task-Spec file: the top-level frontmatter, and the inner `validation_card`. Together they make the current Task-Spec format (v3.1) machine-consumable from any language.
 >
 > **Single source of truth:** `validate-task-spec.sh --emit-schema <name>` prints the file content of the schema. Downstream consumers should fetch via that command, not hard-code copies.
 
@@ -8,8 +8,8 @@
 
 | File | Validates | Notes |
 |------|-----------|-------|
-| `task-spec-frontmatter.schema.json` | YAML frontmatter at top of T-*.md | required fields, enums for `status`, `severity`, `execution_backend`; structural sign-off envelope shape (`signed_off` + `signed_off_by` + `signed_off_at`) |
-| `agent-contract.schema.json` | YAML inside the `Validation Card` zone | `success_criteria[]`, `retry_policy{}`, `agent_contract{}` (version=2) |
+| `task-spec-frontmatter.schema.json` | YAML frontmatter at top of T-*.md | required fields, enums for `status` and `severity`; `execution_backend` as an OPEN STRING (non-normative `examples`, not an enum allow-list); the sign-off envelope shape — structural floor (`signed_off` + `signed_off_by` + `signed_off_at`) plus the key-optional HMAC field `signed_off_sig` (`hmac-sha256-v1:<keyid>:<hex>`, v2.2); v3 fields (`profile`, `parent`, `accepted*`, `requires`, `baseline_ref`, `reference_solution`) |
+| `agent-contract.schema.json` | YAML inside the `Validation Card` zone | `success_criteria[]` (incl. `verifies: [B-N]`), `retry_policy{}`, `agent_contract{}` (version=2: `produce`/`required_tools`/`timeout_minutes`/`sandbox_type`/`emit`/`backend_metadata`) |
 
 ## Emit-from-validator pattern
 
@@ -115,7 +115,7 @@ fn main() {
 
 ## Versioning
 
-The schema `$id` includes the Task-Spec format version (`v2.1.1`). Breaking schema changes bump the format version and require:
+The schema `$id` includes the Task-Spec format version. Breaking schema changes bump the format version and require:
 
 1. New schema file pinned to the new `$id`
 2. CHANGELOG entry under the `[Unreleased]` heading

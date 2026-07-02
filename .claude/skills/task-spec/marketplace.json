@@ -1,7 +1,7 @@
 {
   "name": "task-spec",
-  "version": "2.2.1",
-  "description": "Atomic, vendor-portable, self-verifying Task-Spec v2.1 — produces tasks/T-*.md files that any agentic engine (Kimi, Codex, Claude) can crank.",
+  "version": "3.1.0",
+  "description": "Atomic, vendor-neutral, self-verifying Task-Spec v3 — produces tasks/T-*.md files with runnable evals, behavior↔eval traceability, and a post-execution acceptance gate that any conformant agentic engine (Kimi, Codex, Claude, Cursor) can crank.",
   "owner": {
     "name": "Luan Moreno",
     "email": "luan.moreno@owshq.com"

@@ -1,17 +1,22 @@
 ---
 name: task-spec
-version: "2.2.1"
 description: |
-  Generate atomic, vendor-portable, self-verifying Task-Spec v2.1 files for any
-  agentic system. Produces task PRDs with runnable bash evals that work in
-  Claude, Codex, Kimi, taskship, anthive, /goal, or manual execution.
-  Use when authoring new tasks, decomposing intent into work units, converting
-  legacy task docs to Task-Spec format, or generating overnight backlog.
+  Generate atomic, vendor-neutral, self-verifying Task-Spec v3 files for any
+  agentic system. Use when the user says "create a task", "scaffold a task",
+  "make this executable", "decompose this into work", "turn this into a backlog",
+  "convert this legacy task", or mentions Task-Spec, EDD, or eval-driven
+  development. Produces task PRDs with runnable bash evals + a behavior-to-eval
+  traceability chain + a post-execution acceptance gate that work in any
+  conformant engine (e.g. Claude, Codex, Cursor — adapters in
+  runbooks/dispatch-recipes/) or manual execution. Best for S/M-effort work with
+  a machine-checkable done-condition; routes L/XL or subjective work to SDD.
+metadata:
+  version: "3.1.0"
 ---
 
-# task-spec — Cornerstone CAW for Task-Spec v2.1
+# task-spec — Cornerstone CAW for Task-Spec v3
 
-> **Identity:** The unit-of-work primitive for autonomous agentic systems
+> **Identity:** The open, atomic unit-of-work format for autonomous agentic systems
 > **Domain:** Task PRD generation, eval-driven development, backlog management
 > **Default Threshold:** severity-scaled (0.80–0.99) — see Threshold Mapping below
 > **MCP Validated:** 2026-05-19
@@ -30,7 +35,7 @@ Trigger conditions (Claude auto-invokes when context matches):
 - User has fuzzy intent ("verify the deploy pipeline works")
 - User wants to convert a meeting note into actionable backlog
 - User mentions Task-Spec, EDD, eval-driven, or "make this executable"
-- User asks for a task that any agent (Claude/Codex/Kimi) can pick up
+- User asks for a task that any conformant engine (e.g. Claude/Codex/Cursor) can pick up
 
 Skip if:
 - Task is L/XL effort (route to AgentSpec SDD instead)
@@ -51,10 +56,19 @@ Skip if:
 │  Phase 4: ARCHITECT     spawn task-architect agent for judgment   │
 │  Phase 5: COMPOSE       fill 4 zones, write T-*.md from template  │
 │  Phase 6: VALIDATE      structural linter — validate-task-spec.sh │
-│  Phase 7: GATE          THE gate — safe-to-delegate.sh --stamp    │
+│  Phase 7: GATE          PRE-gate — safe-to-delegate.sh --stamp    │
 │  Phase 8: DISPATCH      hand off to executor per execution_backend│
+│  Phase 9: ACCEPT        POST-gate — accept-task.sh --stamp        │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+> **The loop is closed (v3).** Phase 7 certifies the SPEC is delegate-safe (evals
+> well-formed; assertion failure expected). Phase 9 certifies the WORK is real
+> (evals now PASS from a clean checkout + change set within blast radius + sign-off
+> HMAC intact). A task is provably DONE only when `accept-task.sh` writes
+> `accepted: true`. Humans sit at Phase 1 (intent) and review the Phase 9 verdict —
+> not in the middle of the execution loop. See
+> [references/concepts/conformance-levels.md](references/concepts/conformance-levels.md).
 
 > **Alternative: Batch Sprint Compose** — when you need N specs at once in a
 > known domain, skip Phase 2 (MCP research) and Phase 4 (task-architect spawn).
@@ -117,7 +131,7 @@ then fill in:
 
 | Zone | What goes in |
 |------|--------------|
-| Frontmatter | id, title, status=ready, format_version=2, effort, budget=15, agent, touches_paths, source_note |
+| Frontmatter | id, title, status=ready, format_version=3, profile, effort, budget=15, agent, touches_paths, source_note |
 | Zone 1 | Why / Goal / Context (lean) |
 | Zone 2 | 3+ evals + validation_card YAML + exit_check bash |
 | Zone 3 | Rollback Plan (or `(none)`) |
@@ -125,7 +139,7 @@ then fill in:
 | Zone 5 | Anti-patterns + do-not-touch list |
 | Zone 6 | Open questions (or `(none)`) |
 
-**Layered policy (legacy tolerance):** `format_version` defaults to `2` for new specs. Tasks created before 2026-05-27 (or explicitly marked `format_version: 0` or `1`) are treated as legacy. The validator accepts legacy v0/v1 tasks with warnings rather than hard failures, and the `migrate-legacy-task.sh` script converts legacy markdown checklists into runnable eval stubs.
+**Layered policy (legacy tolerance):** `format_version` is `3` for new specs (the template's default; see `templates/task-spec.md.tpl`). Tasks created before 2026-05-27 (or explicitly marked `format_version: 0`, `1`, or `2`) are treated as legacy. The validator accepts legacy v0/v1/v2 tasks with warnings rather than hard failures, and the `migrate-legacy-task.sh` script converts legacy markdown checklists into runnable eval stubs.
 
 ### Phase 6 — Validate (pre-gate structural linter)
 
@@ -140,9 +154,12 @@ Run `scripts/validate-task-spec.sh tasks/T-*.md`:
 - Confirms every `depends_on` references an existing task (warns if target is parked/done)
 - Confirms every `touches_paths` exists on disk (warns only if task is parked)
 - Confirms Exit Check calls every `eval_N()` defined in Success Criteria
-- For v2: confirms `agent_contract` has `produce` as YAML list, `emit` as enum list,
-  `timeout_minutes` as 1–1440, `sandbox_type` as host|isolated|ephemeral, and
-  `required_tools` as a non-empty list
+- For v2/v3 (which share the `agent_contract` v2 schema): confirms `agent_contract` has
+  `produce` as YAML list, `emit` as enum list, `timeout_minutes` as 1–1440,
+  `sandbox_type` as host|isolated|ephemeral, and `required_tools` as a non-empty list
+- For v3 `profile: standard|full`: confirms a `## Behavior` section (Given/When/Then,
+  `B-N` ids) exists and that every behavior is verified by ≥1 eval and every eval maps to
+  a declared behavior (the behavior↔eval traceability lint)
 - `--shellcheck-evals` (opt-in): pipes each `eval_N()` body through `shellcheck -S warning`
   to catch syntax errors and dead variables
 - `--dry-run-eval` (opt-in): sources the bash blocks in a disposable subshell and verifies
@@ -180,15 +197,18 @@ Run `scripts/safe-to-delegate.sh --stamp tasks/T-*.md`:
 
 A spec with `signed_off: true` is ready to hand to an autonomous executor. See [runbooks/dispatching-a-task-spec.md](runbooks/dispatching-a-task-spec.md) for the full handoff protocol.
 
-The spec's frontmatter carries an `execution_backend:` field that names the canonical executor:
+The spec's frontmatter carries an `execution_backend:` field that names the canonical
+executor. **It is an OPEN STRING, not a closed enum** (validator treats any single token
+as valid; see `scripts/validate-task-spec.sh`): `any` (the default) defers to the author's
+choice, and any other token names a specific executor. The bundled per-engine dispatch
+adapters are the **non-normative** layer — they live in `runbooks/dispatch-recipes/` and
+each carries its own dispatch command:
 
-| Value | Executor |
-|-------|----------|
-| `any` (default) | Author's choice |
-| `kimi` | Kimi CLI via the broker — `/kimi:crank tasks/T-<spec>.md` |
-| `claude` | Claude Code — `Task()` tool, or `/kimi:crank` (Claude drives Kimi) |
-| `codex` | Codex CLI — see Codex plugin docs |
-| `taskship` / `anthive` / `agentspec` | External agentic systems — see their respective docs |
+| `execution_backend` value | Where to find the dispatch command |
+|---------------------------|------------------------------------|
+| `any` (default) | Author's choice — pick any conformant executor |
+| named token (e.g. `claude`, `codex`, `kimi`, `cursor`, `taskship`, `anthive`) | the matching recipe in `runbooks/dispatch-recipes/` |
+| a token with no bundled recipe | `runbooks/dispatch-recipes/custom.md` (DIY adapter) |
 
 Report to user:
 
@@ -277,6 +297,28 @@ workflow on one spec first, then batch the rest once the pattern is proven.
 
 ---
 
+## Decomposition (intent → atoms)
+
+When the input is too big for one atomic spec — a PRD, a design doc, a fuzzy
+intent, or "a set of calls" — **decompose it** into N linked atoms before
+authoring. The converged shape is a **flat parent index of stubs + per-task
+detail specs** (not a tree): `task-architect` finds the atoms, you wire the
+`depends_on:` edges and the `parent:` field, and `batch-generate.sh` makes the
+detail stubs (this is fan-out *into* Batch Sprint Compose, not a replacement).
+
+**Holes are first-class blockers.** An unresolved open question is not a footnote:
+an atom with an open hole is NOT safe-to-delegate. Encode the hole as
+`status: blocked` + `blocked_reason:` (the validator maps `blocked` → A2A
+`input-required` via `ts_a2a_state()`) plus a non-`(none)` `## Open Questions`
+zone. A `blocked` atom is not `ready`, so it never reaches the safe-to-delegate
+gate until the question is answered and it transitions to `ready`.
+
+See [runbooks/decomposing-intent.md](runbooks/decomposing-intent.md) for the
+step-by-step method and [references/concepts/decomposition.md](references/concepts/decomposition.md)
+for the concept.
+
+---
+
 ## Self-containment
 
 This skill is portable as a single folder:
@@ -357,10 +399,13 @@ PROCEEDS with a disclaimer.
 |---------|---------|
 | `generate-task-spec.sh <slug> <effort> [agent] [source]` | Create a new T-*.md from template |
 | `batch-generate.sh --intent-file <path> --effort S|M [opts]` | Bulk-create N stub T-*.md files from an intent list, then bulk-validate |
-| `validate-task-spec.sh [opts] <path>` | Lint a T-*.md against v2 format. Flags: `--shellcheck-evals`, `--dry-run-eval`, `--skip-touches-paths`, `--strict-depends` |
+| `validate-task-spec.sh [opts] <path>` | Lint a T-*.md against the current v3 format (legacy v0/v1/v2 accepted with warnings). Flags: `--shellcheck-evals`, `--dry-run-eval`, `--skip-touches-paths`, `--strict-depends`. `--emit-schema {frontmatter\|agent-contract}` prints the published JSON Schema (Draft 2020-12) and exits |
 | `lint-backlog.sh [--help]` | Cross-task linter: detects touches_paths overlaps, depends_on cycles, duplicate IDs, stale preconditions across the backlog |
 | `run-task-spec.sh [--ci] <path>` | Execute evals from a T-*.md. Runs each `eval_N` in isolation, then the Exit Check. `--ci` emits JSON-per-eval |
-| `safe-to-delegate.sh [--skip-touches-paths] <path>` | **Pre-delegation gate.** One command: structural validate + shellcheck-evals + eval execution (broken-logic guard). Emits DELEGATE / DO-NOT-DELEGATE verdict (exit 0/1). Run before handing a spec to Kimi/Codex blind. |
+| `safe-to-delegate.sh [--stamp] [--skip-touches-paths] <path>` | **PRE-delegation gate.** Structural validate + shellcheck-evals + eval execution (broken-logic guard). Emits DELEGATE / DO-NOT-DELEGATE (exit 0/1). Asks "are the evals well-formed enough to delegate?" — assertion failure is EXPECTED for unbuilt work. |
+| `accept-task.sh [--stamp] [--no-blast-radius] [--gold-sanity] <path>` | **POST-execution gate (v3).** Re-runs evals from a clean checkout (must PASS), verifies the change set is within `touches_paths`/`do-not-touch` (blast-radius), and re-verifies the sign-off HMAC (eval bodies unchanged). Asks the OPPOSITE question: "is the work REAL?" Stamps `accepted: true`. Closes the loop. **B3 opt-in gates:** GATE D reports any frontmatter `requires:` isolation (base_image/deps/network) the sandbox must have provided (document-and-warn; warns on a `full` profile with unset `requires.network`); `--gold-sanity` enables GATE E, the Goodhart guard that BLOCKS a non-discriminating eval — one that passes even on the unpatched baseline (`--base`/`baseline_ref:`) — by reconstructing the baseline in an ephemeral git worktree. |
+| `conformance-check.sh --level L0\|L1\|L2 --executor "<cmd>"` | **Executor conformance suite (v3).** Certifies that a CONSUMER honors the contract (reads format + runs evals / lifecycle / budget+park). `--self-test` runs the bundled `ref-executor.sh`. Makes "any conformant executor can pick it up" testable. |
+| `ref-executor.sh <path>` | The canonical L2-conformant reference EXECUTOR (~60 lines). Not an AI agent — the worked example of the consumer contract (acquire lock → iterate within budget → done/park) for adapter authors. |
 | `migrate-legacy-task.sh <path>` | Convert a legacy task's markdown checklist into v2.1 eval stubs + validation_card |
 | `transition-status.sh <id> <new-status> [reason]` | Atomic status change |
 | `rebuild-state.sh` | Regenerate `_state.yaml` from frontmatter (recovery). Run after direct writes or when state is stale. |
@@ -374,7 +419,7 @@ PROCEEDS with a disclaimer.
 
 ## Linting
 
-Task-Spec v2.1 files use YAML frontmatter with a `title:` field **and** a body H1 (`# Title`). This is intentional: the frontmatter title is machine-readable metadata; the body H1 is human-readable when the file is rendered outside a parser. The combination triggers **MD025** (multiple H1 headings) in markdownlint by default.
+Task-Spec v3 files use YAML frontmatter with a `title:` field **and** a body H1 (`# Title`). This is intentional: the frontmatter title is machine-readable metadata; the body H1 is human-readable when the file is rendered outside a parser. The combination triggers **MD025** (multiple H1 headings) in markdownlint by default.
 
 This skill ships a scoped `.markdownlintrc` in its root that tells markdownlint to treat the frontmatter `title:` as the document's sole H1:
 
@@ -405,15 +450,20 @@ The empty string `""` matches the frontmatter key name exactly, so the body H1 i
 - `references/concepts/eval-driven-development.md` — EDD methodology
 - `references/concepts/edd-vs-sdd-honest-comparison.md` — when to use which
 - `references/concepts/six-zones.md` — zone-by-zone deep dive
+- `references/concepts/profiles.md` — **v3** effort-scaled profiles (lite/standard/full) + the behavior↔eval traceability rule
+- `references/concepts/conformance-levels.md` — **v3** executor conformance L0/L1/L2 + the A2A lifecycle mapping
 - `references/concepts/effort-gate.md` — S/M/L/XL routing rules
-- `references/concepts/agent-contract.md` — cross-vendor contract (includes v2 machine schema)
+- `references/concepts/agent-contract.md` — cross-vendor contract (includes the generic `backend_metadata` field; the backend names itself)
+- `references/concepts/decomposition.md` — **v3** intent/PRD → N atomic specs (flat index + detail atoms, holes-as-blockers)
 - `references/concepts/backlog-architecture.md` — 5-layer state management
+- `references/schemas/` — the **published** JSON Schemas (Draft 2020-12) for the frontmatter and validation card; emit via `validate-task-spec.sh --emit-schema`
 - `references/patterns/runnable-bash-evals.md` — eval writing patterns
 - `references/patterns/validation-card-yaml.md` — YAML contract patterns
 - `references/patterns/atomic-status-transitions.md` — transition protocol
 - `references/patterns/anti-patterns-extraction.md` — mining from MCP research
 - `references/patterns/do-not-touch-detection.md` — repo-scan patterns
 - `runbooks/from-fuzzy-intent.md` — paragraph → Task-Spec
+- `runbooks/decomposing-intent.md` — **v3** intent/PRD/set-of-calls → N linked atomic specs
 - `runbooks/from-meeting-note.md` — Krisp output → Task-Spec
 - `runbooks/from-existing-task.md` — legacy task → v2.1 conversion
 - `runbooks/batch-sprint-compose.md` — bulk intent list → N Task-Spec stubs
@@ -425,8 +475,15 @@ The empty string `""` matches the frontmatter key name exactly, so the body H1 i
 
 ## Remember
 
-> **"Specs that verify themselves don't need humans in the middle of the loop."**
+> **"Specs that verify themselves keep humans at the edges of the loop — at
+> intent-setting and acceptance review — not in the middle of every iteration."**
 
-**Mission:** Be the cornerstone primitive — the atomic, vendor-portable,
-self-verifying unit-of-work format that any agentic system can produce, consume,
-and trust.
+**Mission:** Be the cornerstone primitive — the open, atomic, vendor-neutral,
+self-verifying unit-of-work format that any conformant agentic system can produce,
+consume, and trust. Humans enter at intent and at acceptance review; the execution
+loop in between runs without them.
+
+> **On trust:** the HMAC sign-off envelope is **tamper-evident, not tamper-proof**
+> — it proves a spec's evals were not edited after the gate stamped them, with a
+> repo-shared key. It is a drift/accidental-edit guard, not a security boundary.
+> "Humans at intent + review" is the honest claim; "no humans" is not.

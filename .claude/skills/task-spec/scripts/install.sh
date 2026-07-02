@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install.sh — Portable installer for the task-spec skill.
 #
-# v2.1 rewrite. Defaults to project-local install at $TARGET/.claude/skills/task-spec/.
+# Defaults to project-local install at $TARGET/.claude/skills/task-spec/.
 # Use --global to install at ~/.claude/skills/task-spec/ instead.
 # Use --namespace=<name> to override the agent filename to avoid collision with
 # an existing `task-architect` agent in the target repo.

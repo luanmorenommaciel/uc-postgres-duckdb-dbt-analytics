@@ -6,8 +6,154 @@ All notable changes to the **task-spec** skill are documented here. Format follo
 MINOR is additive format/feature changes, and PATCH is bug fixes / doc clarifications.
 
 The canonical version string lives in `scripts/_lib.sh` (`TASKSPEC_VERSION`) and is
-duplicated in `SKILL.md` frontmatter (`version:`). The doc-consistency lint
-(`scripts/lint-skill-docs.sh`, ships in v2.1.0) asserts the two match.
+duplicated in `SKILL.md` frontmatter under `metadata.version`, `plugin.json`, and
+`marketplace.json`. The doc-consistency lint (`scripts/lint-skill-docs.sh`) asserts all
+four match. As of v3.1.1 the SKILL.md version lives under `metadata:` (an indented
+`version:` key), not at the frontmatter top level, per the Anthropic Skill spec — which
+permits only `name`, `description`, `license`, `allowed-tools`, `metadata`, and
+`compatibility` as top-level keys. The lint accepts the `metadata.version` location and
+falls back to a legacy top-level `version:` for older specs.
+
+---
+
+## [3.1.1] — 2026-07-01
+
+The **Anthropic-conformance patch** (PATCH — no format change; `format_version: 3`
+unchanged, a v3.1.0 spec validates identically). Brings the skill's own frontmatter into
+compliance with Anthropic's official Skill validator (`skill-creator/scripts/quick_validate.py`)
+without touching a single crown-jewel mechanic.
+
+### Changed
+
+- **`version` moved from the frontmatter top level into `metadata.version`.** Anthropic's
+  skill spec forbids a top-level `version` key (allowed: name, description, license,
+  allowed-tools, metadata, compatibility). The canonical value is unchanged (`3.1.0`); only
+  its location in `SKILL.md` moved. `plugin.json`, `marketplace.json`, and
+  `_lib.sh:TASKSPEC_VERSION` are untouched.
+- **`scripts/lint-skill-docs.sh` (Check 2) now reads `metadata.version`** first, with a
+  legacy top-level `version:` fallback, so the dogfood doc-consistency lint stays green.
+- **Description arrow `↔` ASCII-ized to `behavior-to-eval`** — portability nicety; the
+  validator permits the glyph (only `<`/`>` are banned), but ASCII travels everywhere.
+
+### Not changed (the crown jewels — preserved exactly)
+
+The 6 zones, the 9-phase closed loop (validate → safe-to-delegate → accept), the
+behavior-to-eval traceability lint, the HMAC sign-off envelope + 3-tier policy,
+`accept-task.sh` GATES A–E (incl. `--gold-sanity` Goodhart guard), the effort gate,
+conformance levels L0/L1/L2, the open-string `execution_backend`, the 5-layer backlog
+architecture, and every bundled script and concept doc are byte-for-byte unchanged.
+
+---
+
+## [3.1.0] — 2026-06-18
+
+The **open-standard hardening release** (MINOR — `format_version: 3`, additive). Builds on
+the v3.0.0 closed loop with a published machine schema, a generic backend-metadata field,
+two opt-in acceptance gates that defend against 2026-era reward-hacking, the canonical A2A
+v1.0 TaskState dispatcher, DAG cycle detection in the cross-task linter, and a decomposition
+path from intent to N atomic specs. Backward-compatible: a v3.0.0 spec validates unchanged.
+
+### Added
+
+- **Post-execution `--gold-sanity` gate (accept-task.sh GATE E)** — the Goodhart-guard
+  upgrade. BLOCKS a non-discriminating eval set (one that passes even on the UNPATCHED
+  baseline) by reconstructing the baseline in an ephemeral git worktree at `--base` /
+  frontmatter `baseline_ref:` / `reference_solution:`, running the current spec's evals there
+  (must FAIL) and on the current state (must PASS). Degrades to a warn when git/baseline is
+  unavailable. Off by default. See `scripts/accept-task.sh`.
+- **`requires:` isolation block + acceptance GATE D** — an OPTIONAL frontmatter object
+  (`base_image` / `deps` / `network`) declaring what the executor's sandbox must provide.
+  `accept-task.sh` reports it (document-and-warn — the bash tool cannot enforce egress) and
+  WARNS when a `full`-profile spec leaves `requires.network` unset. New `ts_has_requires` /
+  `ts_requires_field` helpers in `_lib.sh`.
+- **A2A v1.0 TaskState dispatcher (`ts_a2a_state_v1` in `_lib.sh`)** — emits the canonical
+  `TASK_STATE_*`-prefixed members (`TASK_STATE_SUBMITTED|WORKING|INPUT_REQUIRED|COMPLETED|
+  FAILED`, catch-all `TASK_STATE_UNSPECIFIED`). The v3.0.0 `ts_a2a_state` is retained as the
+  stable lowercase legacy alias.
+- **`depends_on` DAG cycle detection (lint-backlog.sh)** — the cross-task linter now detects
+  `depends_on` cycles via `tsort` (with a pure-bash DFS fallback) and reports the involved
+  nodes, alongside the existing dangling-edge (non-existent task) check.
+- **Decomposition runbook + concept doc** — `runbooks/decomposing-intent.md` and
+  `references/concepts/decomposition.md`: intent / PRD / set-of-calls → N linked atomic specs
+  (flat parent index of stubs + per-task detail specs, `depends_on`/`parent` edges,
+  holes-as-blockers via `status: blocked`).
+- **Published JSON Schema (Draft 2020-12)** surfaced as the format's machine contract:
+  `validate-task-spec.sh --emit-schema {frontmatter|agent-contract}` is the single source of
+  truth; the frontmatter schema now declares `profile`, `parent`, `accepted*`, `requires`,
+  `baseline_ref`, and `reference_solution`.
+
+### Changed
+
+- **`backend_metadata` replaces the vendor-named `codex_metadata` / `kimi_metadata`
+  fields** — a single generic, optional executor-specific key/value map (the backend names
+  itself). Reflected in `templates/task-spec.md.tpl`, `references/schemas/agent-contract.schema.json`,
+  and `references/concepts/agent-contract.md`. Vendor neutrality at the field level.
+- **`execution_backend` documented as an OPEN STRING in the schema** — the frontmatter
+  schema lists `examples` (non-normative), not an `enum` allow-list; the dispatch table in
+  `SKILL.md` now routes to the non-normative `runbooks/dispatch-recipes/` adapters instead of
+  enumerating vendors as if normative.
+
+### Migration
+
+No action required — v3.0.0 specs validate unchanged. To adopt the new gates, add
+`baseline_ref:` (or pass `--base`) and run `accept-task.sh --gold-sanity`, and/or add a
+`requires:` block. Rename any `codex_metadata:` / `kimi_metadata:` to `backend_metadata:`.
+
+---
+
+## [3.0.0] — 2026-06-18
+
+The **open-format / closed-loop release** (MAJOR — `format_version: 3`, additive).
+Twelve coordinated changes turn Task-Spec into a vendor-neutral open format with a
+verified consumer contract and a closed author→gate→dispatch→execute→**accept**
+loop. Every change is backward-compatible: a v2.2 spec with no new fields validates
+as `profile: standard`.
+
+### Added
+
+- **Effort-scaled profiles** (`profile: lite | standard | full`) — scales required
+  zones to a task's blast radius without weakening the eval moat. Absent → standard.
+  See `references/concepts/profiles.md`.
+- **Behavior zone** (Given/When/Then, stable `B-N` ids) — the BDD layer between
+  intent and evals; required for standard/full, optional for lite.
+- **Behavior↔eval traceability lint** — every behavior must be verified by ≥1 eval
+  (`verifies: [B-N]`) and every eval must map to a declared behavior. Bidirectional
+  coverage enforced as a validator error. The chain that makes the spec machine-checked.
+- **`accept-task.sh` — the POST-execution acceptance gate** (the headline component).
+  Re-runs evals from a clean checkout (must PASS), checks the change set is within
+  `touches_paths`/`do-not-touch` (blast-radius / Goodhart guard), and re-verifies the
+  sign-off HMAC (eval bodies unchanged). Stamps `accepted: true`. Closes the loop.
+- **Conformance levels L0/L1/L2 + `conformance-check.sh`** — certifies an EXECUTOR
+  (not just a spec) honors the contract: reads-format+runs-evals / lifecycle / budget+park.
+  Makes "any conformant executor can pick it up" testable. `--self-test` included.
+- **`ref-executor.sh`** — the canonical L2-conformant reference executor (~60 lines):
+  the worked example of the consumer contract for adapter authors.
+- **`parent:` frontmatter** — references a FEATURE-altitude PRD/SDD; the task DISTILLS
+  it, never embeds it (preserves atomicity).
+- **A2A lifecycle mapping** — Task-Spec status ↔ A2A (Linux Foundation) `TaskState`
+  (`ts_a2a_state` in `_lib.sh`); surfaced by the validator and conformance harness.
+- **`ts_timeout` portable watchdog** in `_lib.sh` — `timeout`→`gtimeout`→pure-bash
+  fallback (macOS ships no `timeout`).
+- Concept docs: `profiles.md`, `conformance-levels.md`.
+
+### Changed
+
+- **`execution_backend` is now an OPEN STRING**, not a closed enum — names any
+  executor; bundled dispatch recipes (`runbooks/dispatch-recipes/`) are the
+  non-normative adapter layer. Vendor neutrality at the field level.
+- **Claims hygiene** — the closing motto no longer says "no humans in the loop";
+  the honest claim is humans at intent + acceptance review. The HMAC envelope is
+  documented as tamper-EVIDENT (drift guard), not tamper-PROOF (security boundary).
+- `agent_contract` v2 schema validation now applies to `format_version: 3` (the
+  contract schema is unchanged; v3 is additive at the spec level).
+- Acceptance envelope floor: `accepted: true` requires `accepted_by` + `accepted_at`
+  and presupposes `signed_off: true` (rejects hand-stamping, mirrors the sign-off floor).
+
+### Migration
+
+No action required for existing specs — they validate as `profile: standard` with
+`format_version` unchanged. To adopt v3 features, add `profile:` and a `## Behavior`
+section, or regenerate with `generate-task-spec.sh --profile <lite|standard|full>`.
 
 ---
 

@@ -142,8 +142,11 @@
           },
           "description": "Terminal outcomes the executor may emit."
         },
-        "codex_metadata": {"type": "object", "additionalProperties": true},
-        "kimi_metadata": {"type": "object", "additionalProperties": true}
+        "backend_metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Optional executor-specific key/value map (the backend names itself). Replaces the vendor-named codex_metadata/kimi_metadata fields."
+        }
       }
     }
   }

@@ -39,17 +39,18 @@ fi
 
 mkdir -p "$TASKSPEC_BACKLOG_DIR"
 LOCK_FILE="$TASKSPEC_BACKLOG_DIR/.state.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
+# Portable advisory lock (ts_lock_* uses an atomic mkdir — works on macOS, which
+# ships no `flock`). Released on every exit path via the trap below.
+if ! ts_lock_acquire "$LOCK_FILE"; then
   echo "ERROR: another process holds the state lock" >&2
   exit 1
 fi
+trap 'ts_lock_release "$LOCK_FILE"' EXIT
 
 CURRENT=$(grep '^status:' "$TASK_FILE" | head -1 | awk '{print $2}')
 
 if [[ "$CURRENT" == "$NEW_STATUS" ]]; then
   echo "NOOP: $TASK_ID already at status '$NEW_STATUS'"
-  flock -u 9
   exit 0
 fi
 
@@ -93,8 +94,6 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -x "$SKILL_DIR/scripts/rebuild-state.sh" ]]; then
   bash "$SKILL_DIR/scripts/rebuild-state.sh" >/dev/null 2>&1 || true
 fi
-
-flock -u 9
 
 echo ">>> $TASK_ID: $CURRENT -> $NEW_STATUS"
 echo "    file: $TARGET_LOC"

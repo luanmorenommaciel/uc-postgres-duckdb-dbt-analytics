@@ -44,3 +44,9 @@ tasks:
   effort: M
   last_validated: 2026-06-26T01:39:29Z
   validator_version: 2
+- id: T-20260701-gold-product-performance
+  path: tasks/T-20260701-gold-product-performance.md
+  status: ready
+  effort: S
+  last_validated: 2026-07-02T01:51:00Z
+  validator_version: 2

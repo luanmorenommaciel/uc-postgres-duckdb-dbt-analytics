@@ -80,8 +80,7 @@ agent_contract:
   emit:
     - pass
     - fail
-  codex_metadata: {}
-  kimi_metadata: {}
+  backend_metadata: {}
 ```
 
 ## Exit Check

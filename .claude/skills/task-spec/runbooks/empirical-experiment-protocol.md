@@ -44,7 +44,7 @@ experiment/
 ├── sdd/
 │   └── T-XXX.md     ← AgentSpec /define output (5-phase SDD spec)
 └── edd/
-    └── T-XXX.md     ← Task-Spec v2.1 output (with runnable evals)
+    └── T-XXX.md     ← Task-Spec v3 output (with runnable evals)
 ```
 
 Same task, two formats. Don't peek at one while writing the other.

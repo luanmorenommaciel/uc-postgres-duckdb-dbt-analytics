@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# generate-task-spec.sh — Create a new Task-Spec v2.1 file from the template.
+# generate-task-spec.sh — Create a new Task-Spec file (current format) from the template.
 #
 # Usage:
 #   bash generate-task-spec.sh [--status=ready|blocked] [--queue] <slug> <effort> [agent] [source_note]
@@ -24,6 +24,7 @@ ts_version_flag "$@"
 
 STATUS="ready"
 QUEUE=false
+PROFILE="standard"
 
 # Parse flags
 ARGS=()
@@ -35,6 +36,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --status)
       STATUS="${2:-ready}"
+      shift 2
+      ;;
+    --profile=*)
+      PROFILE="${1#*=}"
+      shift
+      ;;
+    --profile)
+      PROFILE="${2:-standard}"
       shift 2
       ;;
     --queue)
@@ -76,6 +85,14 @@ if [[ "$EFFORT" != "S" && "$EFFORT" != "M" ]]; then
   echo "ERROR: effort must be S or M. L/XL belong in AgentSpec SDD. See .claude/skills/agent-spec/SKILL.md" >&2
   exit 1
 fi
+
+case "$PROFILE" in
+  lite|standard|full) ;;
+  *)
+    echo "ERROR: profile must be lite, standard, or full (got: '$PROFILE')" >&2
+    exit 1
+    ;;
+esac
 
 if ! [[ "$SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
   echo "ERROR: slug must be lowercase kebab-case (e.g., 'verify-langfuse-otel')" >&2
@@ -123,6 +140,7 @@ sed \
   -e "s|{{ID}}|$ID|g" \
   -e "s|{{TITLE}}|{{TODO: one-line title in imperative voice}}|g" \
   -e "s|{{STATUS}}|$STATUS|g" \
+  -e "s|{{PROFILE}}|$PROFILE|g" \
   -e "s|{{EFFORT}}|$EFFORT|g" \
   -e "s|{{BUDGET_ITERATIONS}}|15|g" \
   -e "s|{{AGENT}}|$AGENT|g" \
@@ -134,6 +152,12 @@ sed \
   -e "s|{{WHY_ONE_PARAGRAPH}}|{{TODO: 1-2 sentence why}}|g" \
   -e "s|{{GOAL_ONE_PARAGRAPH}}|{{TODO: concrete success in one paragraph}}|g" \
   -e "s|{{CONTEXT_LEAN_MAX_100_LINES}}|{{TODO: lean context, link to existing docs}}|g" \
+  -e "s|{{B1_GIVEN}}|{{TODO: precondition}}|g" \
+  -e "s|{{B1_WHEN}}|{{TODO: action}}|g" \
+  -e "s|{{B1_THEN}}|{{TODO: observable outcome}}|g" \
+  -e "s|{{B2_GIVEN}}|{{TODO: precondition}}|g" \
+  -e "s|{{B2_WHEN}}|{{TODO: action}}|g" \
+  -e "s|{{B2_THEN}}|{{TODO: observable outcome}}|g" \
   -e "s|{{AGENT_PRODUCES}}|code \\| docs \\| config \\| tests|g" \
   -e "s|{{DO_NOT_TOUCH_LIST}}|- {{TODO: exact path or (none)}}|g" \
   "$TEMPLATE" > "$TARGET"
@@ -168,7 +192,7 @@ echo ""
 echo "Next: bash $SKILL_DIR/scripts/safe-to-delegate.sh --stamp $TARGET"
 echo ""
 echo "     The gate is THE only path to signed_off:true. Hand-stamping the"
-echo "     signed_off field is rejected by the v2.1 structural sign-off envelope check."
+echo "     signed_off field is rejected by the structural sign-off envelope check."
 echo "     See: references/concepts/signed-off.md"
 echo ""
 echo "  3. DISPATCH (after the gate stamps signed_off:true):"

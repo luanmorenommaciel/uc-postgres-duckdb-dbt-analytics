@@ -4,6 +4,7 @@
 # Detects:
 #   (a) touches_paths overlaps between active (non-parked, non-archive) tasks
 #   (b) depends_on cycles via tsort (with pure-bash fallback)
+#   (b2) depends_on referencing a non-existent task (dangling DAG edge)
 #   (c) duplicate id values across the backlog
 #   (d) stale precondition references
 #
@@ -27,6 +28,7 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   echo "Cross-task linter for the task-spec backlog. Detects:"
   echo "  - touches_paths overlaps between active tasks"
   echo "  - depends_on cycles"
+  echo "  - depends_on referencing a non-existent task"
   echo "  - duplicate task IDs"
   echo "  - stale precondition references"
   echo ""
@@ -53,9 +55,10 @@ declare -A task_precondition
 # List of all task IDs
 declare -a all_ids=()
 
-# Helper: extract frontmatter from a file
+# Helper: extract frontmatter from a file (delegates to the shared _lib.sh
+# implementation — single source of truth, was previously a verbatim copy).
 extract_frontmatter() {
-  awk 'NR==1 && /^---$/{start=1; next} start && /^---$/{exit} start{print}' "$1"
+  ts_frontmatter "$1"
 }
 
 # Helper: parse YAML list from frontmatter block
@@ -190,6 +193,27 @@ for path in "${!path_owners[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
+# Check (b2): depends_on referencing a non-existent task (dangling DAG edge)
+# ---------------------------------------------------------------------------
+# The tsort/DFS edge-builders below only add an edge when BOTH endpoints exist
+# (the '${task_file[$dep]+x}' guard), which means a depends_on pointing at a task
+# that is not in the backlog is silently DROPPED and never surfaced. Report it
+# here so a typo'd or purged dependency is caught at the backlog level (the
+# per-file validator already catches it for a single spec; this is the cross-task
+# net). Additive: does not alter the edge-building or cycle logic below.
+for id in "${all_ids[@]}"; do
+  deps=${task_depends[$id]:-}
+  [[ -z "$deps" ]] && continue
+  for dep in $deps; do
+    [[ -z "$dep" ]] && continue
+    if [[ -z "${task_file[$dep]+x}" ]]; then
+      echo "ERROR: depends_on references non-existent task: '$dep' (declared by $id)"
+      ERRORS=$((ERRORS + 1))
+    fi
+  done
+done
+
+# ---------------------------------------------------------------------------
 # Check (b): depends_on cycles
 # ---------------------------------------------------------------------------
 # Build adjacency list for tsort
@@ -215,7 +239,12 @@ if command -v tsort >/dev/null 2>&1; then
   tsort_err=$(tsort "$tsort_input" 2>&1 >/dev/null) || true
   if echo "$tsort_err" | grep -qi "cycle"; then
     cycle_line=$(echo "$tsort_err" | grep -i "cycle" | head -1)
-    cycle_nodes=$(echo "$tsort_err" | grep -v "^tsort:" | head -5 | tr '\n' ' ')
+    # NOTE: 'grep -v ^tsort:' matches NOTHING for a pure cycle (every tsort line
+    # is 'tsort:'-prefixed), returning exit 1. As a standalone assignment under
+    # 'set -euo pipefail' that aborted the whole script BEFORE the echo below —
+    # so cycles were detected (rc=1) but reported SILENTLY. The trailing '|| true'
+    # neutralises the empty-match exit so the ERROR line always prints.
+    cycle_nodes=$(echo "$tsort_err" | grep -v "^tsort:" | head -5 | tr '\n' ' ' || true)
     echo "ERROR: depends_on cycle detected ($cycle_line) involving: $cycle_nodes"
     ERRORS=$((ERRORS + 1))
   fi

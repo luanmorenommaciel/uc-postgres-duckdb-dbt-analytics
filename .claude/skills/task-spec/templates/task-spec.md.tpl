@@ -2,10 +2,12 @@
 id: {{ID}}
 title: {{TITLE}}
 status: {{STATUS}}
-format_version: 2
+format_version: 3
+profile: {{PROFILE}}  # lite | standard | full — scales required zones to effort/blast-radius (see references/concepts/profiles.md)
 effort: {{EFFORT}}
 budget_iterations: {{BUDGET_ITERATIONS}}
 agent: {{AGENT}}
+parent: (none)  # FEATURE-altitude PRD/SDD this task decomposes from (path or url); the task DISTILLS it, never embeds it
 depends_on: {{DEPENDS_ON}}
 touches_paths:
 {{TOUCHES_PATHS_YAML}}
@@ -21,10 +23,13 @@ blocked_reason: (none)
 security_class: (none)
 source_action_item: (none)
 linear_ref: (none)  # off-repo Intent crossing — Linear issue id/url this task traces to
-execution_backend: any  # any | claude | kimi | cursor | agentspec | anthive | taskship — routes Execute stage
+execution_backend: any  # OPEN STRING — names the canonical executor (any|claude|kimi|cursor|codex|<your-harness>). Adapters live in runbooks/dispatch-recipes/ (non-normative).
 signed_off: false  # flipped true by safe-to-delegate.sh — the autonomy contract; nothing runs unattended without it
 signed_off_by: (none)  # who/what signed off (e.g. luan, safe-to-delegate.sh)
 signed_off_at: (none)  # ISO-8601 timestamp of sign-off
+accepted: false  # flipped true by accept-task.sh AFTER execution — closes the loop (evals re-run from clean checkout + blast-radius + envelope)
+accepted_by: (none)
+accepted_at: (none)
 ---
 
 # {{TITLE}}
@@ -42,6 +47,24 @@ signed_off_at: (none)  # ISO-8601 timestamp of sign-off
 ## Context
 
 {{CONTEXT_LEAN_MAX_100_LINES}}
+
+For the feature-level PRD/design this task decomposes from, see the `parent:`
+frontmatter field — that document is REFERENCED, never copied here. Zone 1 carries
+only the one-paragraph distillation needed to execute this atomic unit.
+
+---
+
+## Behavior
+
+Given/When/Then scenarios the implementation must satisfy. Each scenario has a
+stable `B-N` id; every eval in the Validation Card declares which behavior(s) it
+`verifies:`, and the validator enforces the chain both ways (no orphan behavior,
+no orphan eval). Lite-profile specs may omit this section.
+
+- **B-1** — GIVEN {{B1_GIVEN}} WHEN {{B1_WHEN}} THEN {{B1_THEN}}
+- **B-2** — GIVEN {{B2_GIVEN}} WHEN {{B2_WHEN}} THEN {{B2_THEN}}
+
+(Replace with `(none — lite profile, behavior implied by evals)` only on a lite-profile spec.)
 
 ---
 
@@ -75,22 +98,27 @@ eval_3() {
 success_criteria:
   # check_type: deterministic (default, bash-checked, preferred) | llm_judge
   # (subjective criteria graded by a fast LLM via judge_prompt — deterministic-first).
+  # verifies: the behavior id(s) this eval proves. Standard/full profiles require
+  # every B-N to be covered by >=1 eval and every eval to map to a behavior.
   - id: eval_1
     description: {{EVAL_1_DESCRIPTION}}
     runnable: bash
     check_type: deterministic
+    verifies: [B-1]
     terminal: true
     expected_duration_sec: {{EVAL_1_DURATION}}
   - id: eval_2
     description: {{EVAL_2_DESCRIPTION}}
     runnable: bash
     check_type: deterministic
+    verifies: [B-2]
     terminal: true
     expected_duration_sec: {{EVAL_2_DURATION}}
   - id: eval_3
     description: {{EVAL_3_DESCRIPTION}}
     runnable: bash
     check_type: deterministic
+    verifies: [B-1, B-2]
     terminal: true
     expected_duration_sec: {{EVAL_3_DURATION}}
 
@@ -101,7 +129,7 @@ retry_policy:
 
 agent_contract:
   version: 2
-  read: [intent, contract, guardrails, operations]
+  read: [intent, behavior, contract, guardrails, operations]
   produce:
     - code
     - docs
@@ -117,8 +145,7 @@ agent_contract:
     - fail
     - retry_with_reason
     - parked_with_context
-  codex_metadata: {}
-  kimi_metadata: {}
+  backend_metadata: {}  # optional executor-specific key/value map (the backend names itself); replaces the old codex_metadata/kimi_metadata
 ```
 
 ---
@@ -142,7 +169,7 @@ If execution fails mid-task, revert to the pre-task state:
 
 {{ROLLBACK_SPECIFIC_STEPS}}
 
-(Replace with `(none — this task is append-only or additive with no destructive changes)` if no rollback is needed.)
+(Replace with `(none — this task is append-only or additive with no destructive changes)` if no rollback is needed. Full profile requires concrete steps.)
 
 ---
 
@@ -155,7 +182,7 @@ What to watch during execution and after deployment:
 - **Alert condition:** {{OBSERVABILITY_ALERT_CONDITION}}
 - **Log tail:** {{OBSERVABILITY_LOG_TAIL}}
 
-(Replace with `(none — no runtime observability required)` if not applicable.)
+(Replace with `(none — no runtime observability required)` if not applicable. Full profile requires real hooks.)
 
 ---
 

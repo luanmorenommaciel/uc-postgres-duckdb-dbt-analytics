@@ -1,4 +1,4 @@
-# Runbook: Convert Legacy Task to Task-Spec v2.1
+# Runbook: Convert Legacy Task to Task-Spec v3
 
 > **Use when:** A pre-Task-Spec markdown task exists and needs upgrading to v2.1.
 

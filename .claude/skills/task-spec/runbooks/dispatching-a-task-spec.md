@@ -15,7 +15,7 @@ The spec's `execution_backend:` frontmatter field names the canonical executor. 
 | `execution_backend` | Recipe | Best for |
 |---------------------|--------|----------|
 | `claude` | [dispatch-recipes/claude-code.md](dispatch-recipes/claude-code.md) | Interactive sessions, subagent delegation via `Task()` |
-| `codex` | [dispatch-recipes/codex.md](dispatch-recipes/codex.md) | OpenAI Codex CLI with `codex_metadata:` block |
+| `codex` | [dispatch-recipes/codex.md](dispatch-recipes/codex.md) | OpenAI Codex CLI with `backend_metadata:` block |
 | `kimi` | [dispatch-recipes/kimi.md](dispatch-recipes/kimi.md) | Dark-factory broker pipeline with Codex plan + diff review |
 | `gemini` | [dispatch-recipes/gemini.md](dispatch-recipes/gemini.md) | Generic completion-API CLIs (Gemini, llm, ollama, aichat) |
 | `taskship` | [dispatch-recipes/taskship.md](dispatch-recipes/taskship.md) | taskship workspace runtime |
@@ -83,7 +83,9 @@ bash .claude/skills/task-spec/scripts/safe-to-delegate.sh --require-tier1 tasks/
 
 ---
 
-## Post-dispatch verification
+## Post-dispatch acceptance (Phase 9 — ACCEPT)
+
+`safe-to-delegate.sh` is the PRE-flight gate ONLY — it asks "are these evals well-formed enough to delegate?" (an assertion *failure* on unbuilt work is EXPECTED there). It is the WRONG tool after execution. The POST-execution contract is `accept-task.sh`, which asks the opposite question — "now that the executor claims it is done, is the work REAL?" — and answers it without trusting the executor's word.
 
 The engine is responsible for flipping `status:` from `ready` → `in-progress` → `done` (or `parked` on failure). After the session completes:
 
@@ -91,9 +93,19 @@ The engine is responsible for flipping `status:` from `ready` → `in-progress` 
 # 1. The spec's status should reflect the outcome
 grep '^status:' tasks/T-<spec>.md
 
-# 2. Re-run the gate against the now-complete work. Evals should all pass.
-bash .claude/skills/task-spec/scripts/safe-to-delegate.sh tasks/T-<spec>.md
-# Expect: VERDICT: DELEGATE with N pass / 0 fail
+# 2. ACCEPT the work: re-run the evals (GATE A must PASS), verify blast-radius
+#    (GATE B), and confirm the sign-off HMAC still verifies (GATE C). On ACCEPT,
+#    --stamp writes the acceptance envelope (accepted: true / _by / _at).
+bash .claude/skills/task-spec/scripts/accept-task.sh --stamp tasks/T-<spec>.md
+# Expect: VERDICT: ACCEPT (and the machine-readable line ACCEPTED=1)
+#
+# Optional hardening:
+#   --gold-sanity   also reconstruct the unpatched baseline in an ephemeral git
+#                   worktree and BLOCK any eval that PASSES there (a non-
+#                   discriminating / reward-hackable eval proves nothing).
+#   --base REF      the ref to diff the change set against (GATE B) and the
+#                   baseline ref for --gold-sanity (default: HEAD).
+# e.g.: bash .claude/skills/task-spec/scripts/accept-task.sh --stamp --gold-sanity --base origin/main tasks/T-<spec>.md
 
 # 3. Inspect the engine's diff
 git diff HEAD~1
@@ -101,7 +113,7 @@ git diff HEAD~1
 git diff
 ```
 
-If the engine reported success but the gate now reports `DO NOT DELEGATE`, treat that as a **real defect** — the engine claimed completion that the contract does not corroborate. Park the task with `blocked_reason: engine-success-but-gate-fails`, document the divergence, and re-author or re-dispatch.
+If the engine reported success but `accept-task.sh` returns `VERDICT: REJECT` (`ACCEPTED=0`, exit 1), treat that as a **real defect** — the engine claimed completion that the contract does not corroborate. Park the task with `blocked_reason: engine-success-but-accept-fails`, document the divergence, and re-author or re-dispatch.
 
 ---
 
@@ -111,6 +123,7 @@ If the engine reported success but the gate now reports `DO NOT DELEGATE`, treat
 - **Don't dispatch a spec whose `signed_off: true` was hand-edited.** The structural sign-off envelope check (see `validate-task-spec.sh` v2.1+) will reject it; supervisors should refuse to dispatch.
 - **Don't dispatch from a dirty working tree.** You'll lose the ability to isolate the engine's contribution from your pending work.
 - **Don't ignore engine exit codes 2-6.** Each one names a specific recoverable condition; treating them as opaque failures wastes the typed-error system the engine provides. See the engine's recipe for the exit-code table.
+- **Don't treat a clean `safe-to-delegate.sh` re-run as acceptance.** That script is the PRE-flight gate; post-execution acceptance is `accept-task.sh` (Phase 9). A spec is provably DONE only when `accept-task.sh --stamp` returns `VERDICT: ACCEPT` and writes the `accepted:` envelope.
 
 ---
 
@@ -124,6 +137,7 @@ If the engine reported success but the gate now reports `DO NOT DELEGATE`, treat
 - [dispatch-recipes/anthive.md](dispatch-recipes/anthive.md)
 - [dispatch-recipes/custom.md](dispatch-recipes/custom.md)
 - [validating-a-task-spec.md](validating-a-task-spec.md) — pre-gate linter walkthrough
+- `../scripts/accept-task.sh` — the Phase 9 POST-execution acceptance gate (run after the engine finishes)
 - [../references/concepts/signed-off.md](../references/concepts/signed-off.md) — the autonomy contract
 - [../references/concepts/agent-contract.md](../references/concepts/agent-contract.md) — cross-vendor execution contract
 - [from-fuzzy-intent.md](from-fuzzy-intent.md) — paragraph → spec (start here if you don't have a spec yet)

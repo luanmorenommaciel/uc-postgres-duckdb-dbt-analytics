@@ -32,7 +32,7 @@ follows the spec. "Done" is determined by human review of the final result.
 
 ### EDD — Eval-Driven Development
 
-Best embodied by **Task-Spec v2.1** (this skill).
+Best embodied by **Task-Spec v3** (this skill).
 
 ```text
 intent → Task-Spec → executor loops on evals → done | parked
@@ -225,7 +225,7 @@ EDD is not a silver bullet. It's a sharp tool for a specific shape of work. The
 revolutionary move isn't claiming EDD beats SDD universally — it's defining the
 boundary and routing work cleanly between them.
 
-Task-Spec v2.1 enforces the boundary structurally (effort gate, required evals).
+Task-Spec v3 enforces the boundary structurally (effort gate, required evals).
 AgentSpec handles everything beyond the boundary. Together they form the full
 methodology stack.
 

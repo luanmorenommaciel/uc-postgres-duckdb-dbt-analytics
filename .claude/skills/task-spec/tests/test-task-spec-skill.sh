@@ -369,8 +369,7 @@ agent_contract:
     - fail
     - retry_with_reason
     - parked_with_context
-  codex_metadata: {}
-  kimi_metadata: {}
+  backend_metadata: {}
 ```
 
 ---

@@ -1,7 +1,7 @@
 {
   "name": "task-spec",
-  "version": "2.2.1",
-  "description": "Generate atomic, vendor-portable, self-verifying Task-Spec v2.1 files for any agentic system. Works with Claude, Codex, Kimi, taskship, anthive, /goal, or manual execution.",
+  "version": "3.1.0",
+  "description": "Generate atomic, vendor-neutral, self-verifying Task-Spec v3 files for any agentic system: runnable bash evals + behavior↔eval traceability + a post-execution acceptance gate. Works with Claude, Codex, Kimi, Cursor, taskship, anthive, /goal, or manual execution.",
   "author": {
     "name": "Luan Moreno",
     "email": "luan.moreno@owshq.com"

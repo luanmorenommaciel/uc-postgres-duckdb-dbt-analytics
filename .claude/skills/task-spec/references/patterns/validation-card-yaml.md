@@ -5,21 +5,23 @@
 
 ## What it is
 
-A YAML block in Zone 2 of every Task-Spec that machine-readably describes:
-- Each eval (id, description, runtime estimate)
+A YAML block in the Contract zone of every Task-Spec that machine-readably describes:
+- Each eval (id, description, runtime estimate, and the behavior it `verifies:`)
 - Retry policy (max iterations, circuit breaker)
-- Agent contract (read/produce/verify/emit)
+- Agent contract (the typed v2 schema — see [agent-contract.md](../concepts/agent-contract.md))
 
 ```yaml
 success_criteria:
   - id: eval_1
     description: Docker stack reaches healthy state
     runnable: bash
+    verifies: [B-1]
     terminal: true
     expected_duration_sec: 60
   - id: eval_2
     description: Langfuse UI reachable
     runnable: bash
+    verifies: [B-2]
     terminal: true
     expected_duration_sec: 5
 
@@ -29,10 +31,20 @@ retry_policy:
   on_terminal_failure: park_with_context
 
 agent_contract:
+  version: 2
   read: [intent, contract, guardrails, operations]
-  produce: code | docs | config | tests
-  verify: run all success_criteria
-  emit: pass | fail | retry_with_reason | parked_with_context
+  produce:
+    - code
+    - tests
+  required_tools: [git, bash, docker]
+  timeout_minutes: 30
+  sandbox_type: host           # host | isolated | ephemeral
+  emit:
+    - pass
+    - fail
+    - retry_with_reason
+    - parked_with_context
+  backend_metadata: {}         # optional executor-specific map (the backend names itself)
 ```
 
 ## Why YAML + bash both?
@@ -56,7 +68,8 @@ progress. With it, the contract is explicit.
 |-------|------|----------|---------|
 | `id` | string | yes | Must match the bash function name (`eval_1`, `eval_2`, ...) |
 | `description` | string | yes | One-line WHY this eval exists |
-| `runnable` | enum | yes | `bash` (only value in v2.1) |
+| `runnable` | enum | yes | `bash` (default) or `llm_judge` (see Check type below) |
+| `verifies` | list | yes on `standard`/`full` | The `B-N` behavior(s) this eval proves; every `B-N` needs ≥1 eval and every `verifies:` must name a declared behavior ([profiles.md](../concepts/profiles.md)) |
 | `terminal` | bool | yes | Must be `true` (idempotent + deterministic) |
 | `expected_duration_sec` | int | yes | Realistic estimate; powers budget + progress UI |
 
@@ -66,16 +79,23 @@ progress. With it, the contract is explicit.
 |-------|------|----------|---------|
 | `max_iterations` | int | yes | Hard cap on loop count (default 15) |
 | `circuit_breaker_no_progress` | int | yes | Halt after N iterations with no eval-pass-count delta |
-| `on_terminal_failure` | enum | yes | `park_with_context` (only value in v2.1) |
+| `on_terminal_failure` | enum | yes | `park_with_context` (the terminal-failure action) |
 
-### agent_contract
+### agent_contract (v2 typed schema)
+
+The full field reference lives in [agent-contract.md](../concepts/agent-contract.md);
+the load-bearing fields are:
 
 | Field | Type | Required | Purpose |
 |-------|------|----------|---------|
-| `read` | list | yes | Must include all 4 zones |
-| `produce` | string | yes | What artifacts the agent will create |
-| `verify` | string | yes | Always `run all success_criteria` in v2.1 |
-| `emit` | string | yes | Allowed terminal states |
+| `version` | int | yes | Must be `2` |
+| `read` | list | yes | Zone categories the engine reads before executing |
+| `produce` | list | yes | Artifact kinds: `code`, `docs`, `config`, `tests` |
+| `required_tools` | list | yes | Tools the sandbox must provide |
+| `timeout_minutes` | int | yes | 1–1440; consumed by dispatchers/CI |
+| `sandbox_type` | enum | yes | `host` \| `isolated` \| `ephemeral` |
+| `emit` | list | yes | Allowed terminal states (from the `emit` enum) |
+| `backend_metadata` | object | no | Executor-specific overrides (the backend names itself) |
 
 ## Common mistakes
 

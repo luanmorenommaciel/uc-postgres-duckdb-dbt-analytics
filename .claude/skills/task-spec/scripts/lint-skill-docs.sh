@@ -43,11 +43,40 @@ if [[ -n "$banned_hits" ]]; then
   while IFS= read -r line; do err "  $line"; done <<< "$banned_hits"
 fi
 
+# Check 1b (v3.1): stale OLD-version literals presented as the CURRENT format —
+# the drift class the 2026-06-29 audit found (script --help text and concept/
+# runbook docs/titles still self-describing as "v2.1"). Scoped DELIBERATELY NARROW
+# to catch self-description, not history: only a "Task-Spec v2.x" phrase (a
+# title/identity claim) or a "the v2.x format" current-tense claim trips it. A
+# past-tense historical mention ("the v2.1.1 check could not…", "harden against in
+# v2.2") is legitimate and NOT matched. Exempt files: CHANGELOG.md and the
+# version-history concept doc (task-spec-v1.md). This is the gate that keeps the
+# v2→v3 drift from recurring ("turn the freshest lesson into a gate").
+LIB_VER_FULL=$(grep -m1 '^TASKSPEC_VERSION=' "$SKILL_DIR/scripts/_lib.sh" 2>/dev/null | sed -E 's/.*"([^"]*)".*/\1/')
+LIB_MAJOR="${LIB_VER_FULL%%.*}"
+stale_ver=$(grep -rEn 'Task-Spec v[12]\.[0-9]|against the v[12]\.[0-9]+ format|a new Task-Spec v[12]\.[0-9]|Task-Spec v2 file|quality bar.*v[12]\.[0-9]|generation.*Task-Spec v[12]\.[0-9]' \
+  "$SKILL_DIR" --include='*.md' --include='*.sh' 2>/dev/null \
+  | grep -vE '/CHANGELOG\.md:|task-spec-v1\.md:|/lint-skill-docs\.sh:' \
+  || true)
+if [[ -n "$stale_ver" ]]; then
+  err "stale v1.x/v2.x SELF-DESCRIPTION presented as current (skill is v${LIB_VER_FULL}); update to v${LIB_MAJOR}:"
+  while IFS= read -r line; do err "  $line"; done <<< "$stale_ver"
+fi
+
 # ---------------------------------------------------------------------------
 # Check 2: SKILL.md frontmatter version matches _lib.sh TASKSPEC_VERSION
 # ---------------------------------------------------------------------------
 CHECKS=$((CHECKS + 1))
-SKILL_VER=$(grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed -E 's/^version:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')
+# Per the Anthropic skill spec, only name/description/license/allowed-tools/metadata/
+# compatibility are permitted at the frontmatter top level — 'version' is NOT. The
+# canonical version therefore lives under `metadata:` (indented `  version:`). Accept
+# the compliant metadata.version location; fall back to a legacy top-level `version:`
+# for pre-3.1.1 specs. (bash-3.2-safe: grep+sed only.)
+SKILL_VER=$(grep -m1 -E '^[[:space:]]+version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed -E 's/^[[:space:]]+version:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')
+if [[ -z "$SKILL_VER" ]]; then
+  # legacy fallback: top-level version: (pre-metadata layout)
+  SKILL_VER=$(grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed -E 's/^version:[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')
+fi
 LIB_VER=$(grep -m1 '^TASKSPEC_VERSION=' "$SKILL_DIR/scripts/_lib.sh" 2>/dev/null | sed -E 's/^TASKSPEC_VERSION="?([^"]*)"?[[:space:]]*$/\1/')
 if [[ -z "$SKILL_VER" ]]; then
   err "SKILL.md frontmatter missing 'version:' field"

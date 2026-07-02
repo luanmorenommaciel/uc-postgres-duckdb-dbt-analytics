@@ -6,7 +6,7 @@
 
 ## The rule
 
-Task-Spec v2.1 accepts ONLY S and M effort. L and XL are REJECTED with routing to AgentSpec SDD.
+Task-Spec v3 accepts ONLY S and M effort. L and XL are REJECTED with routing to AgentSpec SDD.
 
 ```text
 S  → Task-Spec ✅
@@ -59,7 +59,7 @@ If the classifier returns L/XL, the agent REFUSES and outputs:
 ```text
 This task is L/XL effort.
 
-Task-Spec v2.1 only accepts S/M. Route to AgentSpec instead:
+Task-Spec v3 only accepts S/M. Route to AgentSpec instead:
   /agentspec:brainstorm "<your intent>"
 
 AgentSpec's 5-phase SDD is designed for L/XL work:

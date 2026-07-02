@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# validate-task-spec.sh — Lint a Task-Spec file against the v2.1 format.
+# validate-task-spec.sh — Lint a Task-Spec file against the current (v3) format; legacy v0/v1/v2 accepted with warnings.
 #
 # Position: pre-gate STRUCTURAL linter. Does NOT execute evals. Does NOT stamp signed_off.
 # The autonomy contract is produced by safe-to-delegate.sh --stamp (the gate).
@@ -18,7 +18,7 @@
 #   --dry-run-eval           Source evals in a disposable subshell and run Exit Check (opt-in)
 #
 # Exit codes:
-#   0 — valid Task-Spec v2/v1 OR accepted legacy v0/v1 with warnings
+#   0 — valid Task-Spec (current v3, or v2/v1) OR accepted legacy v0/v1/v2 with warnings
 #   1 — missing required fields or zones
 #   2 — invalid field values
 #   3 — leftover placeholders or stubs
@@ -113,8 +113,18 @@ if [[ -z "$FORMAT_VERSION" ]]; then
   FORMAT_VERSION="0"
 fi
 
+# Determine profile (C2). Absent → standard (backward-compatible default). The
+# profile axis is ORTHOGONAL to format_version: it scales which zones are
+# REQUIRED, scaling rigor with effort/blast-radius. ts_profile() in _lib.sh is
+# the single source of truth.
+PROFILE="$(ts_profile "$FILE")"
+DECLARED_PROFILE=$(grep -m1 '^profile:' "$FILE" | awk '{print $2}' || true)
+if [[ -n "$DECLARED_PROFILE" && ! " $TS_PROFILES " == *" $DECLARED_PROFILE "* ]]; then
+  ERRORS+=("profile must be one of: $TS_PROFILES (got: '$DECLARED_PROFILE')")
+fi
+
 # Extract frontmatter for mechanical checks
-FRONTMATTER=$(awk 'NR==1 && /^---$/{start=1; next} start && /^---$/{exit} start{print}' "$FILE" || true)
+FRONTMATTER=$(ts_frontmatter "$FILE")
 
 # Resolve repo root for path lookups
 GIT_ROOT=$(cd "$(dirname "$FILE")" && git rev-parse --show-toplevel 2>/dev/null || echo "")
@@ -181,10 +191,18 @@ done
 
 # Check 2c: pipeline-orchestration fields (Canonical Build Pipeline — all optional)
 #   execution_backend routes the Execute stage; signed_off is the autonomy contract.
+# execution_backend is an OPEN STRING (C9): it names the canonical executor, but
+# the format is vendor-neutral — any harness may be named. The validator only
+# requires a non-empty, single-token value (a recognized name routes a bundled
+# dispatch recipe; an unrecognized one is a custom adapter, see
+# runbooks/dispatch-recipes/custom.md). Known names are listed for authoring
+# convenience, NOT enforced.
 if grep -q "^execution_backend:" "$FILE"; then
   EXEC_BACKEND=$(grep "^execution_backend:" "$FILE" | head -1 | awk '{print $2}' || true)
-  if [[ -n "$EXEC_BACKEND" && ! "$EXEC_BACKEND" =~ ^(any|claude|kimi|cursor|agentspec|anthive|taskship)$ ]]; then
-    WARNINGS+=("execution_backend should be one of: any|claude|kimi|cursor|agentspec|anthive|taskship (got: '$EXEC_BACKEND')")
+  if [[ -z "$EXEC_BACKEND" || "$EXEC_BACKEND" == "(none)" ]]; then
+    WARNINGS+=("execution_backend is empty; use 'any' or name a specific executor (open string — claude|kimi|cursor|codex|<your-harness>)")
+  elif [[ ! "$EXEC_BACKEND" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+    WARNINGS+=("execution_backend should be a single token naming an executor (got: '$EXEC_BACKEND')")
   fi
 fi
 if grep -q "^signed_off:" "$FILE"; then
@@ -224,24 +242,45 @@ if ! echo "$ID" | grep -qE '^T-[0-9]{8}-[a-z0-9]+(-[a-z0-9]+)*$'; then
   ERRORS+=("id must match T-YYYYMMDD-<kebab-slug> (got: '$ID')")
 fi
 
-# Check 6: core zones present (relaxed for v0)
+# Check 6: core zones present — PROFILE-AWARE (C2).
+# The minimal contract (every profile, every non-v0 version): Goal + Success
+# Criteria + Exit Check. That is the irreducible self-verifying unit.
 grep -q '^## Goal' "$FILE" || ERRORS+=("Zone 1 missing: ## Goal section")
 grep -qi '^## Success criteria' "$FILE" || ERRORS+=("Zone 2 missing: ## Success Criteria section")
 
 if [[ "$FORMAT_VERSION" != "0" ]]; then
-  grep -q '^## Context' "$FILE" || ERRORS+=("Zone 1 missing: ## Context section")
   grep -q '^## Validation Card' "$FILE" || ERRORS+=("Zone 2 missing: ## Validation Card section")
   grep -q '^## Exit Check' "$FILE" || ERRORS+=("Zone 2 missing: ## Exit Check section")
-  grep -qi '^## Anti-Patterns' "$FILE" || ERRORS+=("Zone 5 missing: ## Anti-Patterns section")
-  grep -qi '^## Do-Not-Touch' "$FILE" || grep -qi '^## Do-not-touch' "$FILE" || ERRORS+=("Zone 5 missing: ## Do-Not-Touch section")
-  grep -qi '^## Open Questions' "$FILE" || ERRORS+=("Zone 6 missing: ## Open Questions section")
+
+  # Context + Guardrails (Anti-Patterns, Do-Not-Touch) + Operations (Open
+  # Questions) are REQUIRED for standard/full, OPTIONAL for lite. A lite spec is
+  # the irreducible self-verifying unit for low-blast-radius S work; it earns its
+  # smaller surface by declaring `profile: lite`.
+  if [[ "$PROFILE" != "lite" ]]; then
+    grep -q '^## Context' "$FILE" || ERRORS+=("Zone 1 missing: ## Context section (required for profile: $PROFILE; use profile: lite to omit)")
+    grep -qi '^## Anti-Patterns' "$FILE" || ERRORS+=("Zone 5 missing: ## Anti-Patterns section (required for profile: $PROFILE)")
+    grep -qi '^## Do-Not-Touch' "$FILE" || grep -qi '^## Do-not-touch' "$FILE" || ERRORS+=("Zone 5 missing: ## Do-Not-Touch section (required for profile: $PROFILE)")
+    grep -qi '^## Open Questions' "$FILE" || ERRORS+=("Zone 6 missing: ## Open Questions section (required for profile: $PROFILE)")
+  fi
 fi
 
-# Check 6b: v2 six-zone sections (Rollback + Observability). Warn-not-fail so v1
-# specs without them still validate; v2 specs are nudged toward completeness.
-if [[ "$FORMAT_VERSION" == "2" ]]; then
-  grep -qi '^## Rollback' "$FILE" || WARNINGS+=("v2 six-zone format recommends a ## Rollback Plan section (use '(none — additive)' if not applicable)")
-  grep -qi '^## Observability' "$FILE" || WARNINGS+=("v2 six-zone format recommends an ## Observability Hooks section (use '(none)' if not applicable)")
+# Check 6b: six-zone sections (Behavior + Rollback + Observability), profile-scaled.
+#   - Behavior: a v3 concept. Required for v3 standard/full (the BDD layer +
+#     traceability anchor), optional for lite. v2/v1 specs predate it — never
+#     required there (backward compatibility).
+#   - Rollback + Observability: required for FULL (unattended dispatch needs a
+#     reversal path and runtime expectations); recommended-not-required otherwise.
+if [[ "$FORMAT_VERSION" != "0" ]]; then
+  if [[ "$FORMAT_VERSION" == "3" && "$PROFILE" != "lite" ]]; then
+    grep -q '^## Behavior' "$FILE" || ERRORS+=("Behavior section missing: ## Behavior with Given/When/Then B-N scenarios (required for v3 profile: $PROFILE; use profile: lite to omit)")
+  fi
+  if [[ "$PROFILE" == "full" ]]; then
+    grep -qi '^## Rollback' "$FILE" || ERRORS+=("## Rollback Plan section required for profile: full (use '(none — additive)' as the body if truly not applicable)")
+    grep -qi '^## Observability' "$FILE" || ERRORS+=("## Observability Hooks section required for profile: full")
+  else
+    grep -qi '^## Rollback' "$FILE" || WARNINGS+=("six-zone format recommends a ## Rollback Plan section (use '(none — additive)' if not applicable)")
+    grep -qi '^## Observability' "$FILE" || WARNINGS+=("six-zone format recommends an ## Observability Hooks section (use '(none)' if not applicable)")
+  fi
 fi
 
 # Check 7: eval functions
@@ -301,15 +340,24 @@ if grep -q 'agent_contract:' "$FILE"; then
   # Extract agent_contract block (from the key to the closing ``` of the yaml block)
   AC_BLOCK=$(sed -n '/^agent_contract:/,/^```/p' "$FILE" | sed '$d')
 
-  if [[ "$FORMAT_VERSION" == "2" ]]; then
-    # v2: version required
+  # v2 and v3 share the agent_contract v2 schema (v3 is additive at the spec level,
+  # not the contract level). Both demand the strict machine schema below.
+  if [[ "$FORMAT_VERSION" == "2" || "$FORMAT_VERSION" == "3" ]]; then
+    # v2/v3: version required
     if ! echo "$AC_BLOCK" | grep -qE '^  version:[[:space:]]*2'; then
-      ERRORS+=("agent_contract version: 2 is required for format_version: 2")
+      ERRORS+=("agent_contract version: 2 is required for format_version: $FORMAT_VERSION")
     fi
 
-    # v2: produce must be a YAML list, not a scalar string
+    # v2: produce must be a YAML list. BOTH styles are valid YAML and accepted:
+    #   block:  produce:\n    - code        inline-flow:  produce: [code]
+    # A pipe-delimited scalar (v1 legacy) or a bare scalar is rejected.
     PRODUCE_LINE=$(echo "$AC_BLOCK" | grep -E '^  produce:' | head -1 || true)
-    if echo "$PRODUCE_LINE" | grep -qE 'produce:[[:space:]]*[^[:space:]]'; then
+    if echo "$PRODUCE_LINE" | grep -qE 'produce:[[:space:]]*\[' ; then
+      # Inline-flow list — must be non-empty.
+      if echo "$PRODUCE_LINE" | grep -qE 'produce:[[:space:]]*\[[[:space:]]*\]'; then
+        ERRORS+=("agent_contract produce inline list is empty")
+      fi
+    elif echo "$PRODUCE_LINE" | grep -qE 'produce:[[:space:]]*[^[:space:]]'; then
       if echo "$PRODUCE_LINE" | grep -q '|'; then
         ERRORS+=("agent_contract produce is a pipe-delimited string (v1 legacy); v2 requires a YAML list")
       else
@@ -322,9 +370,22 @@ if grep -q 'agent_contract:' "$FILE"; then
       fi
     fi
 
-    # v2: emit must be a YAML list with valid enum values
+    # v2: emit must be a YAML list with valid enum values (block OR inline-flow).
     EMIT_LINE=$(echo "$AC_BLOCK" | grep -E '^  emit:' | head -1 || true)
-    if echo "$EMIT_LINE" | grep -qE 'emit:[[:space:]]*[^[:space:]]'; then
+    if echo "$EMIT_LINE" | grep -qE 'emit:[[:space:]]*\[' ; then
+      # Inline-flow list — extract bracketed values and validate the enum.
+      EMIT_VALUES=$(echo "$EMIT_LINE" | sed -n 's/.*\[\(.*\)\].*/\1/p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' || true)
+      if [[ -z "$EMIT_VALUES" ]]; then
+        ERRORS+=("agent_contract emit inline list is empty")
+      else
+        for val in $EMIT_VALUES; do
+          case "$val" in
+            pass|fail|retry_with_reason|parked_with_context) ;;
+            *) ERRORS+=("agent_contract emit contains invalid value: '$val'") ;;
+          esac
+        done
+      fi
+    elif echo "$EMIT_LINE" | grep -qE 'emit:[[:space:]]*[^[:space:]]'; then
       if echo "$EMIT_LINE" | grep -q '|'; then
         ERRORS+=("agent_contract emit is a pipe-delimited string (v1 legacy); v2 requires a YAML list")
       else
@@ -390,6 +451,64 @@ if grep -q 'agent_contract:' "$FILE"; then
     fi
     if ! echo "$AC_BLOCK" | grep -qE '^  version:'; then
       WARNINGS+=("agent_contract missing version; v2 recommends version: 2")
+    fi
+  fi
+fi
+
+# Check 8d: behavior <-> eval TRACEABILITY (C4 — the bidirectional-coverage lint).
+# This is the chain that turns five stapled sections into a machine-checked spec:
+#   - every behavior B-N must be verified by >= 1 eval (no orphan behavior), AND
+#   - every eval's `verifies:` must reference a DEFINED behavior (no orphan ref).
+# A v3 concept: enforced for v3 standard/full (where ## Behavior is required).
+# Skipped for lite (behavior implied by evals) and for v2/v1/v0 (predate behaviors).
+if [[ "$FORMAT_VERSION" == "3" && "$PROFILE" != "lite" ]]; then
+  DECLARED_B=$(ts_behavior_ids "$FILE")
+  VERIFIED_B=$(ts_verified_behavior_ids "$FILE")
+
+  if [[ -z "$DECLARED_B" ]]; then
+    ERRORS+=("profile: $PROFILE requires >= 1 behavior scenario (B-N) in the ## Behavior section")
+  fi
+
+  # Orphan behaviors: declared but no eval verifies them.
+  for b in $DECLARED_B; do
+    if ! echo "$VERIFIED_B" | grep -qx "$b"; then
+      ERRORS+=("behavior $b is declared but no eval 'verifies:' it — every behavior needs >= 1 mapped eval (traceability)")
+    fi
+  done
+
+  # Orphan verifies-refs: an eval references a behavior id that is not declared.
+  for b in $VERIFIED_B; do
+    if ! echo "$DECLARED_B" | grep -qx "$b"; then
+      ERRORS+=("an eval 'verifies: [$b]' but $b is not declared in the ## Behavior section (dangling reference)")
+    fi
+  done
+
+  # Every deterministic eval should map to a behavior. An eval with no `verifies:`
+  # at all (when behaviors exist) is a coverage hole — warn so the author either
+  # maps it or downgrades to lite.
+  if [[ -n "$DECLARED_B" ]]; then
+    SC_EVAL_IDS=$(awk '/^## Success Criteria/{f=1; next} /^## /{f=0} f' "$FILE" | grep -oE 'eval_[0-9]+\(\)' | sed 's/()//' | sort -u || true)
+    CARD_VERIFIES_PRESENT=$(grep -cE '^[[:space:]]*verifies:' "$FILE" || true)
+    CARD_VERIFIES_PRESENT="${CARD_VERIFIES_PRESENT//[^0-9]/}"
+    CARD_VERIFIES_PRESENT="${CARD_VERIFIES_PRESENT:-0}"
+    N_EVALS=$(echo "$SC_EVAL_IDS" | grep -c . || true)
+    N_EVALS="${N_EVALS//[^0-9]/}"
+    N_EVALS="${N_EVALS:-0}"
+    if [[ "$N_EVALS" -gt 0 && "$CARD_VERIFIES_PRESENT" -lt "$N_EVALS" ]]; then
+      WARNINGS+=("$((N_EVALS - CARD_VERIFIES_PRESENT)) eval(s) have no 'verifies:' mapping in the Validation Card — map them to a behavior or use profile: lite")
+    fi
+  fi
+fi
+
+# Check 8e: parent reference (C5). PRD/SDD altitude is REFERENCED, never embedded.
+# If a parent is declared and is a repo-relative path, it should resolve. A url
+# (off-repo) is accepted as-is. Absent/(none) is fine — not every task decomposes
+# from a parent doc.
+PARENT_REF=$(grep -m1 '^parent:' "$FILE" | sed -E 's/^parent:[[:space:]]*//' | sed -E 's/[[:space:]]*(#.*)?$//' || true)
+if [[ -n "$PARENT_REF" && "$PARENT_REF" != "(none)" ]]; then
+  if [[ "$PARENT_REF" != http*://* && "$PARENT_REF" != /* ]]; then
+    if [[ ! -e "$GIT_ROOT/$PARENT_REF" && ! -e "$FILE_DIR/$PARENT_REF" ]]; then
+      WARNINGS+=("parent references a path that does not resolve: '$PARENT_REF' (PRD/SDD should be referenced, not embedded — fix the link)")
     fi
   fi
 fi
@@ -738,6 +857,27 @@ if [[ "$SIGNED_OFF_RAW" == "true" ]]; then
   fi
 fi
 
+# Check 19: acceptance envelope floor (C7). `accepted: true` is the POST-execution
+# contract written ONLY by accept-task.sh; it requires accepted_by + accepted_at,
+# and acceptance presupposes sign-off. Hand-setting `accepted: true` is rejected
+# the same way hand-stamping signed_off is.
+ACCEPTED_RAW=$(grep -m1 '^accepted:' "$FILE" 2>/dev/null | awk -F: '{print $2}' | xargs || true)
+if [[ "${ACCEPTED_RAW:-}" == "true" ]]; then
+  ACC_BY=$(grep -m1 '^accepted_by:' "$FILE" 2>/dev/null | sed -E 's/^accepted_by:[[:space:]]*//' || true)
+  ACC_AT=$(grep -m1 '^accepted_at:' "$FILE" 2>/dev/null | sed -E 's/^accepted_at:[[:space:]]*//' || true)
+  if [[ -z "$ACC_BY" || "$ACC_BY" == "(none)" ]]; then
+    ERRORS+=("accepted: true but accepted_by is empty or (none) — acceptance is produced ONLY by accept-task.sh. Run: bash $(dirname "${BASH_SOURCE[0]}")/accept-task.sh $FILE")
+  fi
+  if [[ -z "$ACC_AT" || "$ACC_AT" == "(none)" ]]; then
+    ERRORS+=("accepted: true but accepted_at is empty or (none) — acceptance is produced ONLY by accept-task.sh.")
+  elif ! [[ "$ACC_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z?$ ]]; then
+    ERRORS+=("accepted_at must be ISO-8601 (got: '$ACC_AT')")
+  fi
+  if [[ "${SIGNED_OFF_RAW:-}" != "true" ]]; then
+    ERRORS+=("accepted: true but signed_off is not true — a task cannot be accepted before it is signed off (gate → dispatch → accept ordering)")
+  fi
+fi
+
 # Report
 if [[ ${#ERRORS[@]} -gt 0 ]]; then
   echo "FAIL: $FILE has ${#ERRORS[@]} validation error(s):"
@@ -814,5 +954,6 @@ if [[ ${#WARNINGS[@]} -gt 0 ]]; then
   exit 0
 fi
 
-echo "OK: $FILE is a valid Task-Spec v${FORMAT_VERSION:-1}"
+A2A_STATE="$(ts_a2a_state "$STATUS")"
+echo "OK: $FILE is a valid Task-Spec v${FORMAT_VERSION:-1} (profile: $PROFILE, status: $STATUS → A2A: $A2A_STATE)"
 exit 0
