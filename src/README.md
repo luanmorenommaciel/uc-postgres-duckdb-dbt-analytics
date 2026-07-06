@@ -1,39 +1,37 @@
-# src/ — the brownfield base
+# src/ — the operational source (initial state)
 
-`src/` is the deterministic foundation the rest of the workshop is built on: a
-synthetic generator feeds **PostgreSQL**, and a transition step lands that source
-into **DuckDB** via `ATTACH`. The flow is one-directional — Postgres is the
-operational source, DuckDB is the analytical store, and nothing flows back.
+`src/` is the deterministic foundation everything else gets built on: a synthetic
+generator feeds **PostgreSQL**, and that Postgres database is the operational
+source. That is all that exists today. The analytical lane — landing the source
+into DuckDB, modelling it with dbt, and serving it over MCP — is **not built
+yet**. It is precisely what gets built *on top of* this base.
 
-DuckDB is an **embedded, in-process library** — a single local file, not a server
-or container. Only Postgres is containerized. There is no DuckDB service to start.
+Only Postgres is containerized here; there is no analytical store, no warehouse
+file, and no transform step in the repo at this stage.
 
 ```mermaid
 graph LR
     S([generate / seed]) --> P[(PostgreSQL<br/>container)]
-    P -->|make land · ATTACH/copy| W[(DuckDB raw.*<br/>embedded file)]
 ```
 
-> **Verified end-to-end.** On a clean slate, the full pipeline runs and the row
-> counts reconcile (see [Verified end-to-end](#verified-end-to-end) below):
-> `make seed` loads Postgres (customers=500, products=200, orders=5000,
-> payments=5000); `make land` produces `raw.*` with exact row parity. The
-> `_control` ledger is never landed — the warehouse holds only the `raw` schema.
+> **Verified.** On a clean slate, `make up` boots Postgres and auto-applies
+> `01_schema.sql`; `make seed` loads a deterministic, correlated baseline
+> (customers=500, products=200, orders=5000, payments=5000). The `_control`
+> ledger stays empty and fenced — the `public.*` business tables are the whole
+> of what a consumer would ever read.
 
 ---
 
-## The five packages
+## The three packages
 
-| Package          | Role                                                              | Key entry points |
-|------------------|-------------------------------------------------------------------|------------------|
-| `src/db`         | Postgres source contract + write helpers; owns the DDL.           | `connect()`, `insert_returning_ids()`, `count()`, `truncate_all()`, `db/01_schema.sql` |
-| `src/seed`       | Deterministic clean baseline (correlated synthetic data).         | `python -m src.seed.seed`, `seed.run()`, `EcommerceFactory` |
-| `src/gen`        | Chaos generator: normal traffic + 14 defect injectors.           | `python -m src.gen.cli`, `engine.run_traffic/inject/watch`, `failures.REGISTRY` |
-| `src/transition` | Postgres → DuckDB `raw.*` landing (full refresh).                 | `python -m src.transition.cli land`, `ingest.land_all()`, `ingest.land_entity()` |
-| `src/warehouse`  | DuckDB substrate: the single file + the connection contract.     | `warehouse_path_str()`, `connect()`, `connect_read_only()`, `connection()` |
+| Package    | Role                                                    | Key entry points |
+|------------|---------------------------------------------------------|------------------|
+| `src/db`   | Postgres source contract + write helpers; owns the DDL. | `conninfo()`, `connect()`, `insert_returning_ids()`, `count()`, `truncate_all()`, `db/01_schema.sql` |
+| `src/seed` | Deterministic clean baseline (correlated synthetic data). | `python -m src.seed.seed`, `seed.run()`, `EcommerceFactory` |
+| `src/gen`  | Chaos generator: normal traffic + 14 defect injectors.  | `python -m src.gen.cli`, `engine.run_traffic/inject/watch`, `failures.REGISTRY` |
 
-`db` and `warehouse` are the two leaves; `transition` is the only bridge between
-the Postgres and DuckDB halves.
+`db` is the leaf every other package routes through; `seed` and `gen` are the two
+writers that put rows into Postgres.
 
 ### `src/db`
 
@@ -42,8 +40,8 @@ The Postgres source contract and the write helpers everything else routes throug
 boot). Public entry points: `conninfo()`, `connect()`, `insert_returning_ids()`,
 `count()`, `truncate_all()`.
 
-**Edges.** A leaf — it depends on nothing else in `src/`. It is imported by `seed`,
-by `gen/repository`, and by `transition/ingest`.
+**Edges.** A leaf — it depends on nothing else in `src/`. It is imported by `seed`
+and by `gen/repository`.
 
 ### `src/seed`
 
@@ -85,36 +83,6 @@ and the `repository.*` helpers.
 **Edges.** `gen/repository` imports `src.db.connection`; `gen/engine` imports
 `src.seed.factories`. See [The generator & failures](#the-generator--failures).
 
-### `src/transition`
-
-The data-movement step. `transition` reads the operational Postgres source and
-lands it into the DuckDB warehouse as `raw.raw_*` tables. It is the one place the
-source crosses into the analytical store.
-
-```bash
-python -m src.transition.cli land
-```
-
-Public surface: the CLI, `ingest.land_all(con=None)`, `ingest.land_entity(...)`,
-the re-exported `EntitySpec` / `LandResult`, and `RAW_SCHEMA = "raw"`.
-
-**Edges.** Imports `src.db.connection.conninfo` (source) and
-`src.warehouse.connection.connect` (target). It deliberately does **not** import
-`src.gen` — it copies `order_customer_column` verbatim to keep its dependencies to
-`db` + `warehouse` only. See [The DuckDB landing contract](#the-duckdb-landing-contract).
-
-### `src/warehouse`
-
-The sole owner of the analytical store: one DuckDB file plus the connection contract
-every component routes through. Nothing else in the repo hardcodes a warehouse path
-or opens its own DuckDB connection.
-
-Public surface: `paths.warehouse_path_str()` / `warehouse_path()`, and
-`connection.connect()` / `connect_read_only()` / `connection()`.
-
-**Edges.** A leaf — no `src/` imports. Consumed by `transition/ingest`. See
-[The warehouse contract](#the-warehouse-contract).
-
 ### Dependency graph
 
 ```
@@ -124,15 +92,10 @@ src.seed.factories  (no internal deps)
 src.gen.cli ──→ src.gen.engine ──→ src.gen.repository ──→ src.db.connection
                         └────────→ src.seed.factories
 src.gen.failures ──→ src.gen.repository
-
-src.transition.cli ──→ src.transition.ingest ──→ src.db.connection (conninfo)
-                                               └─→ src.warehouse.connection (connect)
-
-src.warehouse.connection ──→ src.warehouse.paths   (leaf)
 ```
 
-`db` and `warehouse` are the two leaves; `transition` is the only bridge between
-the Postgres and DuckDB halves.
+`db` is the single leaf; `seed` and `gen` are the only writers, and both reach
+Postgres exclusively through `db.connection`.
 
 ---
 
@@ -142,7 +105,6 @@ the Postgres and DuckDB halves.
 make up                                  # Postgres boots; 01_schema.sql auto-applied
 make seed                                # deterministic clean baseline
 make inject FAILURE=<key> [RECORD=1]     # optional: corrupt the source (silent unless RECORD=1)
-make land                                # Postgres -> DuckDB raw.* via ATTACH
 ```
 
 The trace:
@@ -155,11 +117,6 @@ The trace:
    Writes **only** `public.*`.
 3. **(optional) `make traffic` / `inject` / `watch`** — mutate the source. The
    ledger is written **only** when `RECORD=1`.
-4. **`make land`** — resolve schema drift via `information_schema`; stamp a single
-   `_ingested_at = now(UTC)`; `ATTACH` Postgres `READ_ONLY` via the `postgres`
-   extension with a temporary secret scoped to `SCHEMA 'public'`; `CREATE SCHEMA raw`;
-   per entity `CREATE OR REPLACE TABLE raw.raw_<entity> AS SELECT ...`. It reads
-   **only** `pg.public.*`, never `_control`. It finishes with `DETACH` + `DROP SECRET`.
 
 ### Tables present at each hop
 
@@ -168,7 +125,6 @@ The trace:
 | after `make up`                  | Postgres | `public.customers/products/orders/payments`; `_control.injected_incidents` (empty) |
 | after `make seed`                | Postgres | `public.*` populated; `_control` empty |
 | after `make inject ... RECORD=1` | Postgres | `public.*` corrupted; one row in `_control.injected_incidents` |
-| after `make land`                | DuckDB   | `raw.raw_customers/products/orders/payments` (`_control` is **never** landed — `ATTACH` is `SCHEMA 'public'` only) |
 
 ---
 
@@ -233,113 +189,8 @@ Indexes: `idx_orders_customer_id`, `idx_orders_product_id`, `idx_orders_ordered_
 `_control.injected_incidents(incident_id PK, failure_key, detail, injected_at DEFAULT now())`
 plus indexes. The DDL comment states the intent plainly: the ledger is a
 facilitator-only artifact, written **only** with `--record` / `RECORD=1` and read
-only at the reveal. The source database the analytics read looks exactly like real
+only at the reveal. The source database a consumer reads looks exactly like real
 production — there is no incident table in `public` to give the game away.
-
----
-
-## The DuckDB landing contract
-
-`transition/ingest.py` lands each source entity into `raw.*`. Defects are **never**
-dropped or repaired here — they land intact in `raw.*`.
-
-### Entity specs
-
-| Entity      | Source table | Primary key  | Watermark column |
-|-------------|--------------|--------------|------------------|
-| `customers` | `customers`  | `customer_id`| `created_at` |
-| `products`  | `products`   | `product_id` | `created_at` |
-| `orders`    | `orders`     | `order_id`   | `ordered_at` |
-| `payments`  | `payments`   | `payment_id` | `paid_at` |
-
-`ALL_SPECS` orders them customers, products, orders, payments — for output
-readability only.
-
-### The three stamp columns
-
-Every landed row carries run-level lineage columns appended after the source columns:
-
-| Column              | Meaning |
-|---------------------|---------|
-| `_ingested_at`      | One tz-aware UTC instant (`datetime.now(UTC)`) shared by every row of every table in the run — the freshness anchor. Bound as a parameter, never `now()` in SQL (which would strip the timezone). |
-| `_source_watermark` | The run's high-watermark `max(<watermark_col>)` from the source, identical on every row of the entity, `NULL` on an empty source. |
-| `_schema_drift`     | **orders only.** A bound boolean, `TRUE` when the source link column drifted to `user_id`. The other three tables omit this column — the source DDL asymmetry is preserved. |
-
-### Schema-drift resolution
-
-The orders source column can rename from `customer_id` to `user_id` (the
-`schema_drift` defect). `transition` resolves the live column **once**, before any
-`ATTACH`, via a read-only `information_schema` probe with a 10-second timeout (a
-mirror of `repository.order_customer_column`, defaulting to `customer_id`). That one
-resolved value drives **both** the templated `<live_col> AS customer_id` identifier
-and the bound `_schema_drift` boolean, so the identifier and the flag can never
-disagree. Identifiers can't be bound, so the column — sourced from
-`information_schema`, never user input — is templated into the projection.
-
-### Mechanics
-
-- **Full refresh, not incremental.** No watermark state, no `MERGE` / `ON CONFLICT`,
-  no lookback window. `CREATE OR REPLACE TABLE` makes re-runs idempotent (apart from
-  `_ingested_at`, which advances by design). A failure mid-run leaves already-landed
-  tables intact and propagates loudly.
-- **`READ_ONLY` ATTACH.** `ATTACH '' AS pg (TYPE postgres, READ_ONLY, SECRET pg_landing, SCHEMA 'public')`.
-  `READ_ONLY` enforces the one-way dependency; `SCHEMA 'public'` is why `_control`
-  is never visible to the landing.
-- **Secret handling.** The Postgres password lives in a `TEMPORARY` DuckDB secret —
-  never in the `ATTACH` string and never in error output. Secret values are escaped
-  by doubling quotes. The secret is dropped in a `finally` alongside the `DETACH`, so
-  a mid-run error still cleans up.
-- **Type fidelity.** `NUMERIC → DECIMAL`, `TIMESTAMPTZ → TIMESTAMP WITH TIME ZONE`.
-  Money is never cast — `DECIMAL` stays `DECIMAL`, timestamps stay tz-aware.
-- The warehouse connection itself is read/write (it writes `raw.*`); only the
-  Postgres `ATTACH` is read-only.
-
----
-
-## The warehouse contract
-
-`warehouse/paths.py` + `connection.py` own the single DuckDB file and the connection
-contract. Nothing else in the repo hardcodes a warehouse path or opens its own
-DuckDB connection.
-
-DuckDB is an **embedded, in-process library** — a single local file, not a server or
-container. Only Postgres is containerized.
-
-### The `DUCKDB_DATABASE` rule
-
-The warehouse location is configured **exclusively** via the `DUCKDB_DATABASE`
-environment variable:
-
-- **Only that name.** Legacy names `DUCKDB_PATH` and `WAREHOUSE_DB_PATH` are
-  rejected — if either is set without `DUCKDB_DATABASE`, resolution raises
-  `RuntimeError`, so misconfiguration fails loud rather than silently writing to the
-  wrong place.
-- **Unset** → the default file `src/warehouse/warehouse.duckdb` (gitignored).
-  `paths.py` is the only place that literal exists.
-- **A filesystem path** → resolved to its absolute form.
-- **MotherDuck escape hatch** → a value starting with `md:` (or `motherduck:`) is
-  honoured verbatim and never resolved to a filesystem path. `warehouse_path_str()`
-  returns it as-is; `warehouse_path()` raises `ValueError`, since a DSN has no file
-  path.
-
-### Connecting
-
-`connection.py` exposes the only sanctioned ways to open the warehouse:
-
-- `connect(read_only=False)` — read/write. Writers (the `transition` landing step,
-  dbt) use this; it ensures the parent directory exists before opening.
-- `connect_read_only()` — read-only convenience (`access_mode=READ_ONLY`). Readers
-  use this; the parent is **not** auto-created, so a missing file surfaces as an
-  error rather than a silently-created empty DB.
-- `connection(...)` — a context-managed handle that always closes.
-
-### Single-writer concurrency
-
-DuckDB is **single-writer-process**. Writers open `connect()` briefly and never
-concurrently — serialized by the orchestration order (land, then transform).
-Read-only readers may run concurrently with each other and with a single writer.
-Keeping every connection behind these helpers is what makes that invariant
-enforceable in one place.
 
 ---
 
@@ -394,44 +245,24 @@ Makefile `RECORD=1` → `--record`). `engine.inject` special-cases the cascade
 - **Determinism is selective.** The seed baseline is reproducible via `Faker.seed` —
   the same seed gives the same clean dataset. Generator traffic is **intentionally
   not** seeded; it is nondeterministic, like real production traffic.
-- **Money and time are exact, end to end.** Money is `Decimal` cents; timestamps are
-  tz-aware UTC. The fidelity is preserved across `ATTACH` — `NUMERIC → DECIMAL`,
-  `TIMESTAMPTZ → TIMESTAMP WITH TIME ZONE`, money never cast.
+- **Money and time are exact.** Money is `Decimal` cents; timestamps are tz-aware
+  UTC. The factory quantises every monetary value to two places and never predates
+  an order before its customer's signup.
 - **No hardcoded secrets; parameterized SQL only.** Postgres credentials come from
-  `POSTGRES_*` env; the DuckDB password lives in a temporary secret kept out of error
-  output. All SQL parameters use placeholders; identifiers are interpolated only from
-  internal constants or `information_schema`, never from user input.
-- **One-directional dependency.** Postgres is the containerized, mutable source;
-  DuckDB is the embedded, append-on-refresh store; `transition` is the only crossing,
-  and it `ATTACH`es `READ_ONLY`. The source never depends on the warehouse.
+  `POSTGRES_*` env with local-development defaults. All SQL parameters use
+  placeholders; identifiers are interpolated only from internal constants or
+  `information_schema`, never from user input.
+- **The source looks like production.** `public.*` is all a consumer reads; the
+  `_control` ledger is fenced off and written only on demand, so the operational
+  source carries no answer key.
 
 ---
 
-## Verified end-to-end
+## Next: the analytical lane
 
-The full pipeline was run on a clean slate and confirmed working:
-
-- **`make seed`** → Postgres: `customers=500`, `products=200`, `orders=5000`,
-  `payments=5000`.
-- **`make land`** → DuckDB `raw.*`: `raw_customers=500`, `raw_products=200`,
-  `raw_orders=5000`, `raw_payments=5000` — exact row parity with Postgres.
-- **Fencing confirmed.** `public` holds only the four business tables;
-  `_control.injected_incidents` is separate and never landed — the warehouse has only
-  the `raw` schema.
-- **Integrity preserved.** Order total = `quantity × unit_price` (e.g.
-  `6 × 142.37 = 854.22`); returned/cancelled orders map to refunded payments;
-  `DECIMAL` money survives the `ATTACH`; every run carries a single `_ingested_at`,
-  a per-entity `_source_watermark`, and `_schema_drift = False` on a clean baseline
-  (and only `orders` carries that column).
-
-A two-row illustration of a landed `raw.raw_orders` on a clean baseline:
-
-| `order_id` | `customer_id` | `quantity` | `unit_price` | `total_amount` | `status` | `_ingested_at` | `_source_watermark` | `_schema_drift` |
-|------------|---------------|------------|--------------|----------------|----------|----------------|---------------------|-----------------|
-| 1          | 411           | 6          | 142.37       | 854.22         | cancelled | (run instant) | (max `ordered_at`) | `false` |
-| 2          | 447           | 5          | 439.68       | 2198.40        | returned  | (run instant) | (max `ordered_at`) | `false` |
-
-These are the actual first two landed rows from the verification run (with the
-default `--seed 42` baseline). Note that `total_amount = quantity × unit_price`
-holds (`6 × 142.37 = 854.22`, `5 × 439.68 = 2198.40`), `_ingested_at` is the same
-instant on every row of the run, and `_source_watermark` is identical per entity.
+This base is the operational source and nothing more. The analytical lane —
+**DuckDB** (land the Postgres source), **dbt** (model bronze → silver → gold), and
+**MCP** (serve the modelled data) — is the layer to be **built on top of** it, per
+the BRD at [`docs/brd-analytical-backbone.pdf`](../docs/brd-analytical-backbone.pdf).
+Nothing in that lane exists in the repo yet; this README describes only what is
+present today.

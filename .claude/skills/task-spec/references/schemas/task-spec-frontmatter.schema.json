@@ -61,7 +61,7 @@
     "effort": {
       "type": "string",
       "enum": ["XS", "S", "M", "L", "XL"],
-      "description": "T-shirt sized effort estimate."
+      "description": "T-shirt sized effort estimate. Gate (v3.2): XS/S/M accepted (recommend Kimi); L accepted ONLY with execution_backend:glm and one coherent done-condition (recommend GLM); XL rejected → route to SDD (AgentSpec/OpenSpec/SpecKit). See references/concepts/effort-gate.md."
     },
     "budget_iterations": {
       "type": "integer",
@@ -125,14 +125,12 @@
       "examples": [
         "any",
         "claude",
-        "kimi",
-        "cursor",
         "codex",
-        "agentspec",
-        "anthive",
-        "taskship"
+        "kimi",
+        "glm",
+        "gemini"
       ],
-      "description": "Target executor type. OPEN STRING — the backend names itself; the values above are non-normative examples, not an allow-list. Used by dispatch tooling to route the task."
+      "description": "Target executor type. OPEN STRING — the backend names itself; the values above are non-normative examples, not an allow-list. Used by dispatch tooling to route the task. Note: an effort:L spec is accepted only when this is 'glm' (see references/concepts/effort-gate.md)."
     },
     "signed_off": {
       "type": "boolean",

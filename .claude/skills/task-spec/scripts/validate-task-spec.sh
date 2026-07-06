@@ -219,15 +219,38 @@ if grep -q "^signed_off:" "$FILE"; then
   fi
 fi
 
-# Check 3: effort must be S or M (strict for v1, warning for v0)
+# Check 3: effort gate (v3.2 — size-tiered, engine-aware)
+#   XS/S/M → always accepted (Kimi-class atomic cranks)
+#   L      → accepted ONLY when execution_backend is glm (long-horizon builder),
+#            and warned that it must still carry ONE coherent done-condition
+#   XL     → rejected → route to SDD (AgentSpec / OpenSpec / SpecKit)
+# Legacy v0 keeps the old lenient behavior (warns, never hard-fails).
 EFFORT=$(grep '^effort:' "$FILE" | head -1 | awk '{print $2}' || true)
-if [[ "$EFFORT" != "S" && "$EFFORT" != "M" ]]; then
-  if [[ "$FORMAT_VERSION" == "0" ]]; then
-    WARNINGS+=("effort is '$EFFORT' (legacy v0 allows L/XL); for v1, use S or M and route L/XL to AgentSpec SDD. See .claude/skills/agent-spec/SKILL.md")
-  else
-    ERRORS+=("effort must be S or M (got: '$EFFORT'). L/XL belong in AgentSpec SDD. See .claude/skills/agent-spec/SKILL.md")
-  fi
-fi
+EXEC_BACKEND=$(grep '^execution_backend:' "$FILE" | head -1 | awk '{print $2}' || true)
+case "$EFFORT" in
+  XS|S|M)
+    : # accepted
+    ;;
+  L)
+    if [[ "$FORMAT_VERSION" == "0" ]]; then
+      WARNINGS+=("effort is 'L' (legacy v0 tolerated); for v3.2, an L spec is accepted only with execution_backend: glm and must still carry ONE machine-checkable done-condition.")
+    elif [[ "$EXEC_BACKEND" == "glm" ]]; then
+      WARNINGS+=("effort is 'L' — accepted for the glm backend (long-horizon builder). An L spec MUST still have a single coherent done-condition; if it needs multiple independent evals, decompose into S/M atoms instead. See references/concepts/effort-gate.md")
+    else
+      ERRORS+=("effort 'L' is accepted only with execution_backend: glm (got backend: '${EXEC_BACKEND:-<none>}'). Either set execution_backend: glm, decompose into S/M atoms, or route to SDD. See references/concepts/effort-gate.md")
+    fi
+    ;;
+  XL)
+    if [[ "$FORMAT_VERSION" == "0" ]]; then
+      WARNINGS+=("effort is 'XL' (legacy v0 tolerated); for v3.2, XL is too big for a single Task-Spec — route to SDD (AgentSpec / OpenSpec / SpecKit).")
+    else
+      ERRORS+=("effort 'XL' is too big for a single Task-Spec. Route to SDD: AgentSpec (/agentspec:brainstorm), OpenSpec, or SpecKit. See references/concepts/effort-gate.md")
+    fi
+    ;;
+  *)
+    ERRORS+=("effort must be one of XS|S|M|L|XL (got: '$EFFORT'). See references/concepts/effort-gate.md")
+    ;;
+esac
 
 # Check 4: status is valid enum
 STATUS=$(grep '^status:' "$FILE" | head -1 | awk '{print $2}' || true)

@@ -1,6 +1,6 @@
 {
   "name": "task-spec",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Generate atomic, vendor-neutral, self-verifying Task-Spec v3 files for any agentic system: runnable bash evals + behavior↔eval traceability + a post-execution acceptance gate. Works with Claude, Codex, Kimi, Cursor, taskship, anthive, /goal, or manual execution.",
   "author": {
     "name": "Luan Moreno",

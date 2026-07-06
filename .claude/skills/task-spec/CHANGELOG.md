@@ -16,6 +16,50 @@ falls back to a legacy top-level `version:` for older specs.
 
 ---
 
+## [3.2.0] — 2026-07-06
+
+The **size-aware routing** release (MINOR — additive; `format_version: 3` unchanged, every
+existing spec validates identically). Turns the effort field into an engine-aware dispatch
+signal and completes the "atomic, engine-agnostic task creator" thesis.
+
+### Added
+
+- **Size → engine recommendation.** The effort gate now maps t-shirt size to a recommended
+  builder: `XS/S/M → Kimi` (sprinter, atomic cranks), `L → GLM` (marathoner, long-horizon),
+  `XL → SDD` (route out). The recommendation is **advisory** — a dispatcher heuristic keyed
+  off `effort`, expressed in `runbooks/dispatching-a-task-spec.md`. It never overrides an
+  author's explicit `execution_backend` and keeps the agent-contract C9 black-box guarantee
+  intact (see `references/concepts/agent-contract.md`).
+- **New `Size → engine recommendation` table** in the dispatch runbook.
+
+### Changed
+
+- **Effort gate is now size-tiered and engine-aware** (`scripts/validate-task-spec.sh`,
+  `references/concepts/effort-gate.md`):
+  - `XS/S/M` — accepted (unchanged behavior; XS was previously an undocumented enum value,
+    now defined: ≤ 2 hours, trivial one-liner).
+  - `L` — **newly accepted, but ONLY with `execution_backend: glm`**, and only if it carries
+    ONE coherent machine-checkable done-condition. An L spec on any other backend is a hard
+    error → decompose into S/M atoms (which recommend GLM) or route to SDD. The relaxation is
+    narrow and loud (a validator WARNING is emitted on every accepted L spec).
+  - `XL` — rejected → route to **SDD**. The escalation target is broadened from AgentSpec-only
+    to a menu: **AgentSpec / OpenSpec / SpecKit**. XL is the top t-shirt tier ("XXL" and larger
+    live here in prose).
+- **`execution_backend` examples** trimmed to the current fleet: `any, claude, codex, kimi,
+  glm, gemini` (dropped `cursor, agentspec, anthive, taskship` from the non-normative example
+  list — the field remains an OPEN STRING, so those still validate).
+- **Dispatch runbook** engine table refreshed: added `glm`, removed `taskship`/`anthive` rows,
+  and reframed each engine by fleet role (Claude orchestrates · Codex reviews · Kimi/GLM build).
+
+### Rationale
+
+L is the one tier where relaxing atomicity is defensible: a 3–7 day task can occasionally
+have a single coherent done-condition that a 1M-context, long-horizon engine (GLM) sustains
+across hundreds of tool-call rounds — a capability the sprinter class does not have. Gating L
+to `glm` makes the relaxation earn its keep rather than opening the gate for every backend.
+Everything at XL and beyond stays out of Task-Spec by design: the spec phase itself is the
+work, which is what SDD is for.
+
 ## [3.1.1] — 2026-07-01
 
 The **Anthropic-conformance patch** (PATCH — no format change; `format_version: 3`

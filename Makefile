@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help setup up down restart logs ps psql seed reseed reset clean lint \
-        traffic inject failures watch reset-schema land test
+        traffic inject failures watch reset-schema test
 
 SHELL := /bin/bash
 COMPOSE := docker compose
@@ -76,10 +76,7 @@ reset-schema: ## Revert schema drift (user_id -> customer_id)
 watch: ## Stream traffic and inject random failures SILENTLY (Ctrl-C to stop); add RECORD=1 to log the ledger
 	$(GEN) watch $(RECORD_FLAG)
 
-land: ## Land Postgres into DuckDB via ATTACH (Postgres -> raw.* in the warehouse)
-	uv run python -m src.transition.cli land
-
-test: ## Run the pytest suite (no tests yet — added with the dbt/MCP build)
+test: ## Run the pytest suite (no tests yet — added with the analytical lane)
 	uv run pytest --no-header -q || [ $$? -eq 5 ]
 
 lint: ## Lint the Python code with ruff
