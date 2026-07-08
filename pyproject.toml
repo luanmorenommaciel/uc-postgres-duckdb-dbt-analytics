@@ -1,21 +1,18 @@
 [project]
 name = "uc-postgres-duckdb-dbt-analytics"
 version = "0.1.0"
-description = "Postgres + DuckDB analytics backbone base: deterministic seeder, chaos generator, and landing into DuckDB via ATTACH"
+description = "Postgres analytical-backbone base: a deterministic seeder and 14-mode chaos generator over a Postgres source, ready for Converge to build the analytical lane on top."
 readme = "readme.md"
 requires-python = ">=3.12"
 dependencies = [
     "faker>=37",
     "psycopg[binary]>=3.2",
-    "duckdb>=1.1",
-    "pydantic>=2.7",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.9",
     "pytest>=8",
-    "dbt-duckdb>=1.10.1",
 ]
 
 [tool.uv]

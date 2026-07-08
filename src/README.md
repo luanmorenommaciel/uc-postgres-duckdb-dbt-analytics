@@ -2,9 +2,11 @@
 
 `src/` is the deterministic foundation everything else gets built on: a synthetic
 generator feeds **PostgreSQL**, and that Postgres database is the operational
-source. That is all that exists today. The analytical lane — landing the source
-into DuckDB, modelling it with dbt, and serving it over MCP — is **not built
-yet**. It is precisely what gets built *on top of* this base.
+source. That is all that exists today. The analytical lane — an analytical store
+fed from this source, a transformation layer (bronze → silver → gold), and a
+serving interface — is **not built yet**. It is precisely what gets built *on top
+of* this base, and **Converge chooses the stack** for it (engine, table format,
+transformation tool) rather than the base pre-deciding it.
 
 Only Postgres is containerized here; there is no analytical store, no warehouse
 file, and no transform step in the repo at this stage.
@@ -260,9 +262,11 @@ Makefile `RECORD=1` → `--record`). `engine.inject` special-cases the cascade
 
 ## Next: the analytical lane
 
-This base is the operational source and nothing more. The analytical lane —
-**DuckDB** (land the Postgres source), **dbt** (model bronze → silver → gold), and
-**MCP** (serve the modelled data) — is the layer to be **built on top of** it, per
-the BRD at [`docs/brd-analytical-backbone.pdf`](../docs/brd-analytical-backbone.pdf).
-Nothing in that lane exists in the repo yet; this README describes only what is
-present today.
+This base is the operational source and nothing more. The analytical lane — an
+analytical store (land the Postgres source), a transformation layer
+(bronze → silver → gold), and a serving interface — is the layer to be **built on
+top of** it, per the BRD at [`docs/brd-analytical-backbone.pdf`](../docs/brd-analytical-backbone.pdf).
+**Which** engine, table format, and transformation tool fill those roles is not
+decided here — **Converge** picks them in its early passes (grounding a tech-spec
+against this repo, then writing ADRs). Nothing in that lane exists in the repo
+yet; this README describes only what is present today.

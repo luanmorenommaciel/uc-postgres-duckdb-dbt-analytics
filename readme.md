@@ -4,12 +4,16 @@ A working **brownfield base** for building an analytical lane with **Converge** 
 the deterministic operational source a full analytics platform gets built on top
 of, live, from a requirements document.
 
-The scenario is a familiar one. A high-volume e-commerce company runs both its
-storefront and its analytics on a single Postgres database, and the two workloads
-fight for the same resources: heavy analytical scans slow down order processing,
-and the transactional write load makes reporting crawl. The fix is to lift
-analytics off the operational database into a purpose-built store. **That
-analytical lane does not exist yet — it is what gets built.**
+The scenario is a familiar one (stated in full in the
+[BRD](docs/brd-analytical-backbone.pdf)). A high-volume e-commerce company —
+roughly **$500M GMV** across **50,000 orders/day** — runs both its storefront and
+its analytics on a single Postgres database, and the two workloads fight for the
+same resources: heavy analytical scans slow down order processing, and the
+transactional write load makes reporting crawl. A core analytical query takes
+**12 minutes where the business needs under 5 seconds** — a 144× gap that signals
+the wrong engine for the job, not a slow query. The fix is to lift analytics off
+the operational database into a purpose-built store. **That analytical lane does
+not exist yet — it is exactly what Converge builds.**
 
 What's here today is the *starting point*: a realistic Postgres source and a
 deterministic generator that can both seed clean data and inject real-world
@@ -65,6 +69,32 @@ graph LR
 
 See [`src/README.md`](src/README.md) for the per-package deep dive — the schema and
 the 14 failure modes.
+
+## Repository layout
+
+What's in the repo today, top to bottom:
+
+```text
+.
+├── src/                 the operational base (the only runnable code here)
+│   ├── db/              Postgres connection + 01_schema.sql (the source of truth)
+│   ├── seed/            deterministic clean-baseline seeder
+│   └── gen/             14-mode chaos generator + fenced _control ledger
+├── docs/
+│   └── brd-analytical-backbone.pdf   the brief Converge compiles — problem + outcomes, no tech
+├── .claude/
+│   ├── skills/          the Converge engine (task-spec, agents-kbs-tech-stack, skill-creator) — see its README
+│   └── settings.json    project permissions (allow the operator loop, deny data-destroying targets)
+├── docker-compose.yml   Postgres 17 service (schema auto-applied on first boot)
+├── Makefile             the operator surface (setup / up / seed / inject / …)
+├── pyproject.toml       uv-managed deps (faker + psycopg), ruff + pytest config
+├── uv.lock              pinned dependency lockfile
+└── .env.example         Postgres connection template (copy to .env)
+```
+
+Two things worth calling out: `docs/` holds the **input** to the build (the BRD, technology-free
+on purpose), and `.claude/skills/` holds the **engine** that does the build. Everything the analytics
+platform becomes lands *on top of* `src/` — none of it is committed here yet.
 
 ## Quickstart
 
@@ -145,8 +175,28 @@ This base exists to be built *on*. The Business Requirements Document
 problem and the required outcomes — *no technology, no architecture* — and
 **Converge** compiles that brief into the analytical lane: a tech-spec, then plans,
 then eval-backed tasks, then a fitted harness, then merged code, each pass ending
-at a gate. The lane (an analytical store, transformation, and a serving interface)
-is the deliverable Converge produces — not something shipped here.
+at a gate.
+
+Concretely, the target is a **medallion pipeline off the Postgres source**, ending
+in a queryable serving interface:
+
+```mermaid
+graph LR
+    P[(Postgres<br/>public.*)] --> RAW[raw.*<br/>ingested copy]
+    RAW --> BRONZE[bronze<br/>typed · deduped]
+    BRONZE --> SILVER[silver<br/>conformed · joined]
+    SILVER --> GOLD[gold<br/>business marts]
+    GOLD --> SERVE([serving interface<br/>sub-5s queries]):::todo
+    classDef todo fill:#eef,stroke:#88a,color:#334,stroke-dasharray:4 3;
+```
+
+That closes the gap the BRD names: the 12-minute analytical query becomes a
+sub-5-second one, because it runs against `gold` marts on an analytical engine
+instead of scanning the operational tables. **Which** engine, table format, and
+transformation tool fill each box is *not decided here* — Converge picks them in
+its early passes (grounding the tech-spec against this repo, then writing ADRs).
+The lane is the deliverable Converge produces; nothing above `raw.*` is shipped in
+this repo yet.
 
 The Converge engine is available in this repo under `.claude/skills/`
 (`task-spec`, `agents-kbs-tech-stack`, `skill-creator`); the full method lives at

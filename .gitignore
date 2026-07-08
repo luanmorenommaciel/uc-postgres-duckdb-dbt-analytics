@@ -4,10 +4,8 @@ __pycache__/
 *.pyc
 .ruff_cache/
 .pytest_cache/
-*.duckdb
-*.duckdb.wal
-*.duckdb.tmp/
-# Warehouse: the single shared DuckDB file (DUCKDB_DATABASE default location)
-src/warehouse/warehouse.duckdb
-src/warehouse/warehouse.duckdb.wal
 .DS_Store
+
+# AgentSpec plugin scaffolds these dirs; we don't use them — keep them out
+.claude/agents/
+.claude/sdd/
