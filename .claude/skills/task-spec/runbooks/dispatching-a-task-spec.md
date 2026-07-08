@@ -14,15 +14,30 @@ The spec's `execution_backend:` frontmatter field names the canonical executor. 
 
 | `execution_backend` | Recipe | Best for |
 |---------------------|--------|----------|
-| `claude` | [dispatch-recipes/claude-code.md](dispatch-recipes/claude-code.md) | Interactive sessions, subagent delegation via `Task()` |
-| `codex` | [dispatch-recipes/codex.md](dispatch-recipes/codex.md) | OpenAI Codex CLI with `backend_metadata:` block |
-| `kimi` | [dispatch-recipes/kimi.md](dispatch-recipes/kimi.md) | Dark-factory broker pipeline with Codex plan + diff review |
+| `claude` | [dispatch-recipes/claude-code.md](dispatch-recipes/claude-code.md) | Interactive sessions, subagent delegation via `Task()`; the orchestrator |
+| `codex` | [dispatch-recipes/codex.md](dispatch-recipes/codex.md) | OpenAI Codex CLI; review + adversarial passes (different model family) |
+| `kimi` | [dispatch-recipes/kimi.md](dispatch-recipes/kimi.md) | Sprinter builder — fast atomic cranks of XS/S/M specs |
+| `glm` | [dispatch-recipes/gemini.md](dispatch-recipes/gemini.md) | Marathoner builder — long-horizon; the required backend for `effort: L` |
 | `gemini` | [dispatch-recipes/gemini.md](dispatch-recipes/gemini.md) | Generic completion-API CLIs (Gemini, llm, ollama, aichat) |
-| `taskship` | [dispatch-recipes/taskship.md](dispatch-recipes/taskship.md) | taskship workspace runtime |
-| `anthive` | [dispatch-recipes/anthive.md](dispatch-recipes/anthive.md) | Parallel-session dispatch with `output_artifacts:` capture |
 | `any` / `custom` / unknown | [dispatch-recipes/custom.md](dispatch-recipes/custom.md) | DIY escape hatch; references v2.2's deferred `dispatch_recipe:` field |
 
-If `execution_backend: any` (the default), the author left the choice to the dispatcher — pick whichever recipe matches the engine you have configured.
+If `execution_backend: any` (the default), the author left the choice to the dispatcher — apply the size→engine recommendation below, or pick whichever recipe matches the engine you have configured.
+
+### Size → engine recommendation (advisory)
+
+When the backend is `any`, use the spec's `effort` to pick a builder. This is a *dispatcher
+heuristic*, not a spec requirement — it never overrides an explicit `execution_backend`, and
+the agent contract treats the model inside a backend as a black box (clause C9).
+
+| `effort` | Recommended engine | Rationale |
+|----------|--------------------|-----------|
+| `XS` / `S` / `M` | **Kimi** | Sprinter: reflex-grade, fast tool loops; ideal for atomic single-eval cranks |
+| `L` | **GLM** (required) | Marathoner: 1M-context, long-horizon; the gate accepts L only with `execution_backend: glm` |
+| `XL` | **route to SDD** | Too big for one Task-Spec → AgentSpec / OpenSpec / SpecKit; decompose the build phase into S/M atoms |
+
+> `glm` and `gemini` currently share the generic completion-API recipe
+> ([dispatch-recipes/gemini.md](dispatch-recipes/gemini.md)) until a dedicated `glm` recipe
+> lands. Point it at GLM's Anthropic-compatible endpoint via `backend_metadata`.
 
 ---
 
@@ -132,9 +147,7 @@ If the engine reported success but `accept-task.sh` returns `VERDICT: REJECT` (`
 - [dispatch-recipes/claude-code.md](dispatch-recipes/claude-code.md)
 - [dispatch-recipes/codex.md](dispatch-recipes/codex.md)
 - [dispatch-recipes/kimi.md](dispatch-recipes/kimi.md)
-- [dispatch-recipes/gemini.md](dispatch-recipes/gemini.md)
-- [dispatch-recipes/taskship.md](dispatch-recipes/taskship.md)
-- [dispatch-recipes/anthive.md](dispatch-recipes/anthive.md)
+- [dispatch-recipes/gemini.md](dispatch-recipes/gemini.md) — also serves `glm` (generic completion-API) until a dedicated recipe lands
 - [dispatch-recipes/custom.md](dispatch-recipes/custom.md)
 - [validating-a-task-spec.md](validating-a-task-spec.md) — pre-gate linter walkthrough
 - `../scripts/accept-task.sh` — the Phase 9 POST-execution acceptance gate (run after the engine finishes)

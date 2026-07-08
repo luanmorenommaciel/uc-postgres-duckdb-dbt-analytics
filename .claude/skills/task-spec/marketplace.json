@@ -1,6 +1,6 @@
 {
   "name": "task-spec",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Atomic, vendor-neutral, self-verifying Task-Spec v3 — produces tasks/T-*.md files with runnable evals, behavior↔eval traceability, and a post-execution acceptance gate that any conformant agentic engine (Kimi, Codex, Claude, Cursor) can crank.",
   "owner": {
     "name": "Luan Moreno",

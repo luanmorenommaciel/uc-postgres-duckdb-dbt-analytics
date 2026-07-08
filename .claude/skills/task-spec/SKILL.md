@@ -9,9 +9,9 @@ description: |
   traceability chain + a post-execution acceptance gate that work in any
   conformant engine (e.g. Claude, Codex, Cursor — adapters in
   runbooks/dispatch-recipes/) or manual execution. Best for S/M-effort work with
-  a machine-checkable done-condition; routes L/XL or subjective work to SDD.
+  a machine-checkable done-condition; L runs on GLM (one coherent goal), routes XL or subjective work to SDD.
 metadata:
-  version: "3.1.0"
+  version: "3.2.0"
 ---
 
 # task-spec — Cornerstone CAW for Task-Spec v3
@@ -38,7 +38,8 @@ Trigger conditions (Claude auto-invokes when context matches):
 - User asks for a task that any conformant engine (e.g. Claude/Codex/Cursor) can pick up
 
 Skip if:
-- Task is L/XL effort (route to AgentSpec SDD instead)
+- Task is XL effort (route to SDD — AgentSpec / OpenSpec / SpecKit)
+- Task is L effort AND not a single coherent goal on GLM (decompose, or route to SDD)
 - Output is subjective (UX, copy, design — use SDD)
 - User just wants a one-off prompt, not a reusable spec
 
@@ -79,7 +80,7 @@ Skip if:
 Parse the user's intent. Critical questions answered before scaffolding:
 
 1. **What's the verbal description?** (1 paragraph from user)
-2. **Effort class?** S (≤1 day) or M (1-3 days). L/XL → refuse, route to AgentSpec.
+2. **Effort class?** XS/S/M → Kimi. L → GLM (requires `execution_backend: glm`, one coherent goal). XL → refuse, route to SDD (AgentSpec/OpenSpec/SpecKit). See `references/concepts/effort-gate.md`.
 3. **Agent hint?** `any` (vendor-portable) OR specific (`python-developer`, etc.)
 4. **Source provenance?** Meeting note, audit, ticket — must have one
 5. **Touches what paths?** Best guess; refined in Phase 3
@@ -388,7 +389,7 @@ PROCEEDS with a disclaimer.
 | Reading the user's intent | ADVISORY |
 | MCP research | STANDARD |
 | Drafting evals | IMPORTANT (severity-scaled) |
-| Refusing L/XL effort | CRITICAL (always refuses, never overrides) |
+| Refusing XL effort (and L without glm) | CRITICAL (always refuses, never overrides) |
 | Detecting subjective output | CRITICAL (refuses EDD, routes to SDD) |
 
 ---
@@ -452,7 +453,7 @@ The empty string `""` matches the frontmatter key name exactly, so the body H1 i
 - `references/concepts/six-zones.md` — zone-by-zone deep dive
 - `references/concepts/profiles.md` — **v3** effort-scaled profiles (lite/standard/full) + the behavior↔eval traceability rule
 - `references/concepts/conformance-levels.md` — **v3** executor conformance L0/L1/L2 + the A2A lifecycle mapping
-- `references/concepts/effort-gate.md` — S/M/L/XL routing rules
+- `references/concepts/effort-gate.md` — XS/S/M/L/XL routing + size→engine recommendation (Kimi/GLM/SDD)
 - `references/concepts/agent-contract.md` — cross-vendor contract (includes the generic `backend_metadata` field; the backend names itself)
 - `references/concepts/decomposition.md` — **v3** intent/PRD → N atomic specs (flat index + detail atoms, holes-as-blockers)
 - `references/concepts/backlog-architecture.md` — 5-layer state management

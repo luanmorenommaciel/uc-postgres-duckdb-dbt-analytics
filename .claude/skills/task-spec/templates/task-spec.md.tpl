@@ -4,7 +4,7 @@ title: {{TITLE}}
 status: {{STATUS}}
 format_version: 3
 profile: {{PROFILE}}  # lite | standard | full — scales required zones to effort/blast-radius (see references/concepts/profiles.md)
-effort: {{EFFORT}}
+effort: {{EFFORT}}  # XS | S | M → Kimi ; L → GLM (requires execution_backend: glm) ; XL → route to SDD (see references/concepts/effort-gate.md)
 budget_iterations: {{BUDGET_ITERATIONS}}
 agent: {{AGENT}}
 parent: (none)  # FEATURE-altitude PRD/SDD this task decomposes from (path or url); the task DISTILLS it, never embeds it
@@ -23,7 +23,7 @@ blocked_reason: (none)
 security_class: (none)
 source_action_item: (none)
 linear_ref: (none)  # off-repo Intent crossing — Linear issue id/url this task traces to
-execution_backend: any  # OPEN STRING — names the canonical executor (any|claude|kimi|cursor|codex|<your-harness>). Adapters live in runbooks/dispatch-recipes/ (non-normative).
+execution_backend: any  # OPEN STRING — names the canonical executor (any|claude|codex|kimi|glm|gemini|<your-harness>). Adapters live in runbooks/dispatch-recipes/ (non-normative). Required to be 'glm' for effort: L.
 signed_off: false  # flipped true by safe-to-delegate.sh — the autonomy contract; nothing runs unattended without it
 signed_off_by: (none)  # who/what signed off (e.g. luan, safe-to-delegate.sh)
 signed_off_at: (none)  # ISO-8601 timestamp of sign-off
