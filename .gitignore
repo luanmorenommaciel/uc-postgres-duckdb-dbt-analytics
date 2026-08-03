@@ -9,3 +9,14 @@ __pycache__/
 # AgentSpec plugin scaffolds these dirs; we don't use them — keep them out
 .claude/agents/
 .claude/sdd/
+
+# Converge method skills symlinked in for the e2e run (cvg/e2e-test-v1).
+# These point at ~/GitHub/converge and are machine-specific — never commit them.
+.claude/skills/brd-docs-to-tech-req
+.claude/skills/plans-to-coherent-spec
+.claude/skills/reqs-to-swimlane-plans
+.claude/skills/sketch-plans-adversarial-review
+.claude/skills/stack-to-harness
+.claude/skills/task-loop
+.claude/skills/task-specs-to-issues
+.claude/skills/tech-req-to-adrs

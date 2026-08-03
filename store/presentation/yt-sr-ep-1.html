@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EP 01 — O Que É Engenharia Agêntica? (99% explica errado)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-editorial: 'Newsreader', 'Georgia', serif;
+    --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    --bg: #08080a;
+    --surface: #111114;
+    --surface2: #19191e;
+    --surface-elevated: #222228;
+    --border: rgba(120, 160, 220, 0.08);
+    --border-bright: rgba(120, 160, 220, 0.18);
+    --text: #eaedf2;
+    --text-dim: #6e7a8c;
+
+    --accent: #4a9eff;
+    --accent-dim: rgba(74, 158, 255, 0.10);
+    --silver: #b0bec5;
+    --silver-bright: #cfd8dc;
+    --silver-dim: rgba(176, 190, 197, 0.10);
+    --gold: #d4af37;
+    --gold-dim: rgba(212, 175, 55, 0.10);
+    --green: #3fb950;
+    --green-dim: rgba(63, 185, 80, 0.10);
+    --red: #f85149;
+    --red-dim: rgba(248, 81, 73, 0.10);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167, 139, 250, 0.10);
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34, 211, 238, 0.10);
+    --orange: #ef9000;
+    --orange-dim: rgba(239, 144, 0, 0.10);
+
+    --code-bg: #060608;
+    --code-text: #c8d0dc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font-body); color: var(--text); background: var(--bg); overflow: hidden; }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: 0.035;
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMDAnIGhlaWdodD0nMzAwJz48ZmlsdGVyIGlkPSduJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC43NScgbnVtT2N0YXZlcz0nNCcgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSczMDAnIGhlaWdodD0nMzAwJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzEnLz48L3N2Zz4=");
+  }
+
+  .deck { height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+  .slide {
+    height: 100dvh; scroll-snap-align: start; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: clamp(32px, 5vh, 56px) clamp(36px, 5vw, 88px);
+    isolation: isolate;
+  }
+
+  .deck-progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--silver)); z-index: 100; transition: width 0.3s ease; pointer-events: none; box-shadow: 0 0 16px rgba(74,158,255,0.55), 0 0 4px rgba(255,255,255,0.4); border-radius: 0 3px 3px 0; }
+  .deck-progress::after { content: ''; position: absolute; top: 50%; right: -1px; width: 7px; height: 7px; border-radius: 50%; transform: translateY(-50%); background: #fff; box-shadow: 0 0 14px 3px rgba(74,158,255,0.7); }
+  .deck-counter { position: fixed; bottom: clamp(12px,2vh,24px); right: clamp(12px,2vw,24px); font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); z-index: 100; letter-spacing: 2px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: rgba(8,8,10,0.75); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .deck-counter::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 10px; vertical-align: 1px; box-shadow: 0 0 10px var(--accent); animation: counter-pulse 2.5s ease-in-out infinite; }
+  @keyframes counter-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .deck-tracker {
+    position: fixed; top: 50%; right: clamp(10px, 1.2vw, 18px); transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 4px; padding: 10px 6px;
+    background: rgba(10, 11, 14, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 999px; z-index: 100;
+    max-height: min(85vh, 960px); overflow: hidden; pointer-events: none;
+  }
+  .deck-tracker .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); transition: background 0.25s ease, width 0.25s ease, height 0.25s ease; flex: 0 0 6px; }
+  .deck-tracker .dot.passed { background: rgba(255, 255, 255, 0.4); }
+  .deck-tracker .dot.current { width: 6px; height: 22px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 12px rgba(74, 158, 255, 0.5); flex: 0 0 22px; }
+  @media (max-width: 768px) { .deck-tracker { display: none; } }
+
+  .slide__display { font-family: var(--font-display); font-size: clamp(56px,10vw,120px); font-weight: 400; letter-spacing: -1px; line-height: 0.92; }
+  .slide__heading { font-family: var(--font-display); font-size: clamp(36px,6vw,72px); font-weight: 400; letter-spacing: -0.5px; line-height: 1.08; }
+  .slide__body { font-family: var(--font-editorial); font-size: clamp(19px,2.1vw,25px); font-weight: 400; line-height: 1.55; color: var(--text-dim); letter-spacing: 0.01em; }
+  .slide__subtitle { font-family: var(--font-mono); font-size: clamp(13px,1.5vw,17px); color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+  .slide__label { font-family: var(--font-mono); font-size: clamp(11px,1.1vw,14px); font-weight: 600; text-transform: uppercase; letter-spacing: 2.5px; color: var(--accent); margin-bottom: 16px; }
+  .act-marker { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 8px; opacity: 0.7; }
+
+  .gradient-text { background: linear-gradient(135deg, var(--accent) 0%, var(--silver-bright) 50%, #ffffff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-gold { background: linear-gradient(135deg, var(--gold) 0%, #ffffff 50%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-green { background: linear-gradient(135deg, var(--green) 0%, #ffffff 60%, var(--green) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-red { background: linear-gradient(135deg, var(--red) 0%, #ffffff 50%, var(--orange) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .gradient-purple { background: linear-gradient(135deg, var(--purple) 0%, #ffffff 50%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 0 24px rgba(167,139,250,0.10)); }
+
+  .slide--title { justify-content: center; align-items: center; text-align: center; background-image: radial-gradient(ellipse at 50% 30%, rgba(74,158,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(212,175,55,0.04) 0%, transparent 40%); }
+  .slide--silent { justify-content: center; align-items: center; text-align: center; }
+
+  .hero-badge {
+    display: inline-block; background: var(--accent); color: #000;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase;
+    padding: 7px 18px; border-radius: 5px;
+    box-shadow: 0 6px 22px rgba(74,158,255,0.4), 0 0 0 1px rgba(74,158,255,0.6), inset 0 1px 0 rgba(255,255,255,0.3);
+    margin-bottom: clamp(20px,3.2vh,36px);
+  }
+  .hero-badge::before { content: '\25C6'; margin-right: 8px; opacity: 0.8; }
+  .hero-badge::after { content: '\25C6'; margin-left: 8px; opacity: 0.8; }
+
+  .pill { display: inline-block; padding: 7px 16px; border-radius: 5px; font-family: var(--font-mono); font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin: 0 6px; color: #000; background: var(--pill-c, var(--accent)); box-shadow: 0 5px 18px var(--pill-glow, rgba(74,158,255,0.35)), 0 0 0 1px var(--pill-ring, rgba(74,158,255,0.6)), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .pill::before { content: '\25C6'; margin-right: 7px; opacity: 0.7; }
+  .pill.accent { --pill-c: var(--accent); --pill-glow: rgba(74,158,255,0.4); --pill-ring: rgba(74,158,255,0.6); }
+  .pill.purple { --pill-c: var(--purple); --pill-glow: rgba(167,139,250,0.4); --pill-ring: rgba(167,139,250,0.6); }
+  .pill.gold { --pill-c: var(--gold); --pill-glow: rgba(212,175,55,0.4); --pill-ring: rgba(212,175,55,0.6); }
+  .pill.green { --pill-c: var(--green); --pill-glow: rgba(63,185,80,0.4); --pill-ring: rgba(63,185,80,0.6); }
+  .pill.red { --pill-c: var(--red); --pill-glow: rgba(248,81,73,0.4); --pill-ring: rgba(248,81,73,0.6); }
+
+  .section-rule { display: flex; align-items: center; gap: 14px; margin: 14px 0; color: var(--text-dim); font-family: var(--font-mono); font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; }
+  .section-rule::before, .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-bright), transparent); }
+
+  .hero-quote { font-family: var(--font-editorial); font-style: italic; font-size: clamp(30px, 3.8vw, 54px); line-height: 1.25; color: var(--text); max-width: 1400px; margin: 0 auto; letter-spacing: -0.01em; }
+  .hero-quote::before { content: '\201C'; color: var(--accent); font-size: 1.1em; margin-right: 4px; vertical-align: -0.1em; opacity: 0.5; }
+  .hero-quote::after { content: '\201D'; color: var(--accent); font-size: 1.1em; margin-left: 4px; vertical-align: -0.1em; opacity: 0.5; }
+  .hero-cite { font-family: var(--font-mono); font-size: 14px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; position: relative; display: inline-block; padding-top: 20px; }
+  .hero-cite::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 48px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+
+  .callout { position: relative; border: 1px solid var(--green); border-radius: 14px; padding: 20px 26px; background: linear-gradient(135deg, rgba(63,185,80,0.12) 0%, rgba(63,185,80,0.03) 100%); box-shadow: 0 8px 32px rgba(63,185,80,0.10), inset 0 1px 0 rgba(255,255,255,0.06); }
+  .callout::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .callout.red { background: linear-gradient(135deg, rgba(248,81,73,0.16) 0%, rgba(248,81,73,0.04) 100%); border-color: var(--red); box-shadow: 0 8px 32px rgba(248,81,73,0.14), inset 0 1px 0 rgba(255,255,255,0.06); }
+  .callout.red::before { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+  .callout.gold { background: linear-gradient(135deg, rgba(212,175,55,0.16) 0%, rgba(212,175,55,0.04) 100%); border-color: var(--gold); box-shadow: 0 8px 32px rgba(212,175,55,0.14), inset 0 1px 0 rgba(255,255,255,0.06); }
+  .callout.gold::before { background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .callout.accent { background: linear-gradient(135deg, rgba(74,158,255,0.12), rgba(74,158,255,0.03)); border-color: var(--accent); box-shadow: 0 8px 32px rgba(74,158,255,0.12), inset 0 1px 0 rgba(255,255,255,0.06); }
+  .callout.accent::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .callout .co-kicker { font-family: var(--font-mono); font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+  .callout:not(.red):not(.gold):not(.accent) .co-kicker { color: var(--green); }
+  .callout.red .co-kicker { color: var(--red); }
+  .callout.gold .co-kicker { color: var(--gold); }
+  .callout.accent .co-kicker { color: var(--accent); }
+  .callout .co-body { font-family: var(--font-editorial); font-size: clamp(15px,1.7vw,19px); color: var(--text); line-height: 1.45; }
+
+  /* ── A ESCADA — the episode's signature diagram
+     4 rungs, colors matched to the rings slide: blue → cyan → gold → green ── */
+  .ladder { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1.2fr; gap: clamp(8px,1vw,16px); align-items: end; width: 100%; max-width: 1700px; margin: clamp(10px,1.6vh,20px) auto 0; }
+  .rung { border: 1px solid var(--border-bright); border-radius: 16px; padding: clamp(14px,1.8vh,24px) clamp(14px,1.3vw,24px); background: var(--surface); position: relative; border-top: 3px solid var(--rg-c, var(--silver)); display: flex; flex-direction: column; transition: transform 0.3s, box-shadow 0.3s; }
+  .rung:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(0,0,0,0.3); }
+  .rung .rg-num { align-self: flex-start; font-family: var(--font-mono); font-size: clamp(9px,0.85vw,11px); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #000; background: var(--rg-c, var(--silver)); padding: 5px 12px; border-radius: 5px; margin-bottom: 14px; box-shadow: 0 5px 18px var(--rg-glow, rgba(176,190,197,0.35)), 0 0 0 1px var(--rg-c, var(--silver)), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .rung .rg-num::before { content: '\25C6'; margin-right: 7px; opacity: 0.7; }
+  .rung .rg-name { font-family: var(--font-display); font-size: clamp(23px,2.4vw,36px); color: var(--text); line-height: 1; margin-bottom: 10px; }
+  .rung .rg-what { font-family: var(--font-editorial); font-size: clamp(13px,1.2vw,16px); color: var(--text-dim); line-height: 1.5; }
+  .rung .rg-verdict { font-family: var(--font-display); font-style: italic; font-size: clamp(15px,1.5vw,21px); letter-spacing: 0.2px; white-space: nowrap; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); color: var(--rg-c, var(--silver)); }
+  .rung.r1 { --rg-glow: rgba(74,158,255,0.4); }
+  .rung.r2 { --rg-glow: rgba(34,211,238,0.4); }
+  .rung.r3 { --rg-glow: rgba(212,175,55,0.4); }
+  .rung.r4 { --rg-glow: rgba(63,185,80,0.4); }
+  .rung.r1 { --rg-c: var(--accent); min-height: clamp(170px,23vh,240px); background: linear-gradient(180deg, rgba(74,158,255,0.06), rgba(74,158,255,0.01)); border-color: rgba(74,158,255,0.24); }
+  .rung.r2 { --rg-c: var(--cyan); min-height: clamp(215px,29vh,300px); background: linear-gradient(180deg, rgba(34,211,238,0.06), rgba(34,211,238,0.01)); border-color: rgba(34,211,238,0.24); }
+  .rung.r3 { --rg-c: var(--gold); min-height: clamp(260px,35vh,360px); background: linear-gradient(180deg, rgba(212,175,55,0.08), rgba(212,175,55,0.01)); border-color: rgba(212,175,55,0.30); }
+  .rung.r4 { --rg-c: var(--green); min-height: clamp(305px,42vh,430px); background: linear-gradient(180deg, rgba(63,185,80,0.09), rgba(63,185,80,0.01)); border-color: rgba(63,185,80,0.34); box-shadow: 0 10px 40px rgba(63,185,80,0.10); }
+  .lad-arrow { display: flex; align-items: center; justify-content: center; align-self: center; font-family: var(--font-display); font-size: clamp(20px,2.3vw,34px); color: var(--text-dim); opacity: 0.6; padding-bottom: clamp(26px,7vh,80px); }
+  @media (max-width: 860px) { .ladder { grid-template-columns: 1fr; align-items: stretch; } .lad-arrow { display: none; } .rung { min-height: 0 !important; } }
+
+  /* ── VIBE vs AGÊNTICA matrix ── */
+  .matrix { width: 100%; max-width: 1560px; margin: 0 auto; display: grid; grid-template-columns: minmax(180px, 0.8fr) 1fr 1fr; border: 1px solid var(--border-bright); border-radius: 16px; overflow: hidden; background: var(--surface); }
+  .matrix .mx-cell { padding: clamp(12px,1.8vh,20px) clamp(14px,1.6vw,26px); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; }
+  .matrix .mx-cell:last-child, .matrix .mx-row-last { border-bottom: none; }
+  .matrix .mx-head { background: var(--surface2); font-family: var(--font-mono); font-size: clamp(10px,1vw,12px); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+  .matrix .mx-head.vibe { color: var(--silver-bright); }
+  .matrix .mx-head.agent { color: var(--gold); background: linear-gradient(180deg, rgba(212,175,55,0.10), rgba(212,175,55,0.02)); }
+  .matrix .mx-dim { font-family: var(--font-mono); font-size: clamp(10px,1vw,12.5px); letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); background: rgba(255,255,255,0.012); }
+  .matrix .mx-vibe { font-family: var(--font-editorial); font-size: clamp(13.5px,1.35vw,17.5px); color: var(--text-dim); line-height: 1.4; }
+  .matrix .mx-agent { font-family: var(--font-editorial); font-size: clamp(13.5px,1.35vw,17.5px); color: var(--text); line-height: 1.4; background: rgba(212,175,55,0.03); border-left: 1px solid rgba(212,175,55,0.14); }
+
+  /* ── THE ACADEMIC TRIAD — intent · collaboration · verification ── */
+  .triad { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(14px,1.6vw,26px); width: 100%; max-width: 1680px; margin: clamp(18px,2.6vh,30px) auto 0; }
+  .tri-card { position: relative; border: 1px solid var(--tr-c, var(--accent)); border-radius: 18px; padding: clamp(26px,3.4vh,40px) clamp(18px,1.8vw,30px) clamp(18px,2.4vh,28px); background: linear-gradient(180deg, var(--tr-bg1, rgba(74,158,255,0.07)), var(--tr-bg2, rgba(74,158,255,0.01))); text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
+  .tri-card:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(0,0,0,0.3); }
+  .tri-card .tr-pill { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: #000; background: var(--tr-c, var(--accent)); padding: 6px 16px; border-radius: 999px; box-shadow: 0 5px 18px var(--tr-glow, rgba(74,158,255,0.4)), inset 0 1px 0 rgba(255,255,255,0.3); white-space: nowrap; }
+  .tri-card .tr-ghost { position: absolute; top: clamp(8px,1.2vh,16px); right: clamp(12px,1.2vw,20px); font-family: var(--font-display); font-size: clamp(44px,4.6vw,72px); color: var(--tr-c, var(--accent)); opacity: 0.14; line-height: 1; }
+  .tri-card .tr-q { font-family: var(--font-mono); font-size: clamp(10px,0.95vw,12px); letter-spacing: 3px; text-transform: uppercase; color: var(--tr-c, var(--accent)); margin-bottom: 6px; }
+  .tri-card .tr-name { font-family: var(--font-display); font-style: italic; font-size: clamp(30px,3.2vw,46px); color: var(--text); line-height: 1; margin-bottom: 10px; }
+  .tri-card .tr-sub { font-family: var(--font-editorial); font-style: italic; font-size: clamp(12.5px,1.15vw,15.5px); color: var(--text-dim); line-height: 1.4; margin-bottom: clamp(12px,1.8vh,20px); }
+  .tri-card ul { list-style: none; text-align: left; margin: 0 auto; max-width: 440px; }
+  .tri-card li { font-family: var(--font-editorial); font-size: clamp(13px,1.2vw,16.5px); color: var(--text-dim); line-height: 1.45; padding: 5px 0 5px 22px; position: relative; }
+  .tri-card li::before { content: '\25B8'; color: var(--tr-c, var(--accent)); position: absolute; left: 0; top: 7px; font-size: 12px; }
+  .tri-card li b { color: var(--text); font-weight: 500; }
+  .tri-card .tr-ring { font-family: var(--font-mono); font-size: clamp(9.5px,0.9vw,11px); letter-spacing: 2px; text-transform: uppercase; color: var(--tr-c, var(--accent)); margin-top: clamp(12px,2vh,18px); padding-top: 12px; border-top: 1px solid var(--border); opacity: 0.9; }
+  .tri-card.tr-intent { --tr-c: var(--accent); --tr-glow: rgba(74,158,255,0.4); --tr-bg1: rgba(74,158,255,0.07); --tr-bg2: rgba(74,158,255,0.01); }
+  .tri-card.tr-collab { --tr-c: var(--cyan); --tr-glow: rgba(34,211,238,0.4); --tr-bg1: rgba(34,211,238,0.06); --tr-bg2: rgba(34,211,238,0.01); }
+  .tri-card.tr-verify { --tr-c: var(--gold); --tr-glow: rgba(212,175,55,0.4); --tr-bg1: rgba(212,175,55,0.08); --tr-bg2: rgba(212,175,55,0.01); }
+  .triad-stamp { display: flex; align-items: center; gap: clamp(8px,0.9vw,14px); width: fit-content; margin: clamp(14px,2vh,22px) auto 0; font-family: var(--font-mono); font-size: clamp(9.5px,0.9vw,11.5px); font-weight: 700; letter-spacing: 2.2px; text-transform: uppercase; color: var(--text-dim); background: linear-gradient(180deg, rgba(212,175,55,0.10), rgba(212,175,55,0.02)); border: 1px solid rgba(212,175,55,0.4); border-radius: 999px; padding: 6px 18px 6px 6px; box-shadow: 0 0 22px rgba(212,175,55,0.14), inset 0 1px 0 rgba(255,255,255,0.05); }
+  .triad-stamp .ts-lead { color: #000; background: linear-gradient(180deg, #e8c552, var(--gold)); padding: 5px 14px; border-radius: 999px; letter-spacing: 2px; box-shadow: 0 4px 14px rgba(212,175,55,0.45), inset 0 1px 0 rgba(255,255,255,0.35); }
+  .triad-stamp .ts-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0.55; flex: none; }
+  .triad-stamp .ts-hi { color: var(--text); }
+  @media (max-width: 900px) { .triad { grid-template-columns: 1fr; } }
+
+  /* ── ROLE CONVERGENCE — six hats funnel into one engineer ── */
+  .conv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(8px,0.9vw,14px); width: 100%; max-width: 1680px; margin: 0 auto; }
+  .conv-card { border: 1px solid var(--border-bright); border-top: 3px solid var(--cv-c, var(--accent)); border-radius: 12px; padding: clamp(12px,1.6vh,18px) clamp(10px,1vw,16px); background: var(--surface); text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
+  .conv-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,0.28); }
+  .conv-card .cv-role { font-family: var(--font-display); font-size: clamp(16px,1.55vw,23px); color: var(--text); margin-bottom: 7px; line-height: 1.02; }
+  .conv-card .cv-what { font-family: var(--font-editorial); font-size: clamp(11.5px,1vw,14px); color: var(--text-dim); line-height: 1.35; }
+  .conv-card.cv1 { --cv-c: var(--accent); }  .conv-card.cv2 { --cv-c: var(--purple); }
+  .conv-card.cv3 { --cv-c: var(--cyan); }    .conv-card.cv4 { --cv-c: var(--orange); }
+  .conv-card.cv5 { --cv-c: var(--silver); }  .conv-card.cv6 { --cv-c: var(--red); }
+  .conv-merge { text-align: center; font-family: var(--font-display); font-size: clamp(22px,2.4vw,34px); color: var(--gold); opacity: 0.85; margin: clamp(6px,1.2vh,14px) 0; letter-spacing: 18px; text-shadow: 0 0 18px rgba(212,175,55,0.35); }
+  .conv-focus { position: relative; border: 1px solid var(--gold); border-radius: 18px; padding: clamp(18px,2.6vh,30px) clamp(22px,2.2vw,40px); background: linear-gradient(135deg, rgba(212,175,55,0.14), rgba(212,175,55,0.03)); box-shadow: 0 12px 44px rgba(212,175,55,0.14), inset 0 1px 0 rgba(255,255,255,0.07); max-width: 1240px; margin: 0 auto; text-align: center; width: 100%; }
+  .conv-focus::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .conv-focus .cf-kicker { font-family: var(--font-mono); font-size: clamp(10px,1vw,12px); font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .conv-focus .cf-name { font-family: var(--font-display); font-size: clamp(30px,3.6vw,52px); line-height: 1; margin-bottom: 14px; }
+  .conv-focus .cf-pills { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 6px; margin-bottom: 14px; }
+  .conv-focus .cf-line { font-family: var(--font-editorial); font-size: clamp(14px,1.5vw,19px); color: var(--text); line-height: 1.45; }
+  .conv-focus .cf-quote { font-family: var(--font-editorial); font-style: italic; font-size: clamp(13px,1.35vw,17px); color: var(--text-dim); line-height: 1.45; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  @media (max-width: 900px) { .conv-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  /* ── TERMINAL MOCK — the transition into the repo ── */
+  .term { width: 100%; max-width: 1150px; margin: clamp(14px,2.4vh,28px) auto 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--border-bright); background: var(--code-bg); box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 60px rgba(74,158,255,0.07), inset 0 1px 0 rgba(255,255,255,0.05); text-align: left; }
+  .term-bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .term-bar .tb-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .term-bar .tb-dot.r { background: #ff5f57; } .term-bar .tb-dot.y { background: #febc2e; } .term-bar .tb-dot.g { background: #28c840; }
+  .term-bar .tb-title { flex: 1; text-align: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); letter-spacing: 1px; }
+  .term-body { padding: clamp(18px,2.6vh,30px) clamp(20px,2vw,32px); font-family: var(--font-mono); font-size: clamp(13px,1.35vw,17px); line-height: 2.05; color: var(--code-text); white-space: pre-wrap; }
+  .term-body .tp { color: var(--green); font-weight: 600; }
+  .term-body .tc { color: var(--text-dim); font-style: italic; opacity: 0.85; }
+  .term-body .th { color: #fcd34d; }
+  .term-body .cursor { display: inline-block; width: 0.6em; height: 1.15em; background: var(--code-text); vertical-align: -0.2em; animation: cursor-blink 1.1s steps(1) infinite; }
+  @keyframes cursor-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  /* ── "A partir daqui — tela real" — the cut to the live demo, styled as a camera viewfinder strip ── */
+  .cut-strip { position: relative; display: flex; align-items: center; gap: clamp(14px,1.8vw,26px); width: min(92%, 980px); margin-top: clamp(18px,3vh,34px); padding: clamp(12px,1.6vh,16px) clamp(18px,2.4vw,30px); font-family: var(--font-mono); background: linear-gradient(90deg, rgba(248,81,73,0.10) 0%, rgba(248,81,73,0.03) 55%, transparent 100%); border-top: 1px solid rgba(248,81,73,0.28); border-bottom: 1px solid rgba(248,81,73,0.28); }
+  .cut-strip::before, .cut-strip::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--red); opacity: 0.9; }
+  .cut-strip::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+  .cut-strip::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+  .cut-rec { position: relative; display: inline-flex; align-items: center; gap: 10px; padding: 6px 17px 6px 13px; border: 1px solid rgba(248,81,73,0.45); border-radius: 999px; color: #ffb9b2; font-size: clamp(11px,1.05vw,13px); font-weight: 800; letter-spacing: 3.5px; flex-shrink: 0; background: linear-gradient(180deg, rgba(248,81,73,0.18), rgba(248,81,73,0.04)); box-shadow: 0 0 24px rgba(248,81,73,0.22), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -8px 16px rgba(248,81,73,0.07); text-shadow: 0 0 14px rgba(248,81,73,0.55); }
+  .cut-rec::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffdedb, var(--red) 62%); box-shadow: 0 0 10px rgba(248,81,73,0.95), 0 0 24px rgba(248,81,73,0.5); animation: counter-pulse 1.6s ease-in-out infinite; }
+  .cut-rec::after { content: ''; position: absolute; left: 13px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; border: 1px solid rgba(248,81,73,0.7); animation: rec-ping 1.6s cubic-bezier(0.2,0.6,0.4,1) infinite; pointer-events: none; }
+  @keyframes rec-ping { 0% { transform: scale(1); opacity: 0.85; } 70%, 100% { transform: scale(2.8); opacity: 0; } }
+  .cut-label { font-size: clamp(12px,1.3vw,16px); font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text); }
+  .cut-label em { font-style: normal; color: var(--red); }
+  .cut-meta { margin-left: auto; font-size: clamp(10px,1vw,12px); letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; white-space: nowrap; }
+
+  /* ── Full-screen fade overlay — press T for a clean cut to the terminal ── */
+  #fade { position: fixed; inset: 0; z-index: 10000; background: var(--code-bg); opacity: 0; pointer-events: none; transition: opacity 0.9s ease; }
+  #fade.on { opacity: 1; pointer-events: all; }
+
+  /* ═══ CINEMATIC MOTION LAYER ═══ */
+  @media (prefers-reduced-motion: no-preference) {
+    body.anim-ready .slide > * {
+      opacity: 0;
+      transform: translateY(30px);
+      filter: blur(6px);
+      transition: opacity 0.72s cubic-bezier(0.22, 0.61, 0.36, 1),
+                  transform 0.72s cubic-bezier(0.22, 0.61, 0.36, 1),
+                  filter 0.6s ease;
+      transition-delay: 0ms;
+    }
+    body.anim-ready .slide.is-active > * {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    body.anim-ready .slide.is-active > *:nth-child(1) { transition-delay: 70ms; }
+    body.anim-ready .slide.is-active > *:nth-child(2) { transition-delay: 150ms; }
+    body.anim-ready .slide.is-active > *:nth-child(3) { transition-delay: 230ms; }
+    body.anim-ready .slide.is-active > *:nth-child(4) { transition-delay: 315ms; }
+    body.anim-ready .slide.is-active > *:nth-child(5) { transition-delay: 400ms; }
+    body.anim-ready .slide.is-active > *:nth-child(6) { transition-delay: 485ms; }
+    body.anim-ready .slide.is-active > *:nth-child(n+7) { transition-delay: 560ms; }
+
+    body.anim-ready .slide--silent > *,
+    body.anim-ready .slide--title > * {
+      transform: translateY(40px) scale(0.985);
+      filter: blur(8px);
+      transition-duration: 0.9s;
+    }
+    body.anim-ready .slide--silent.is-active > *,
+    body.anim-ready .slide--title.is-active > * {
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+
+    .slide::before {
+      content: '';
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      opacity: 0; transition: opacity 1.4s ease;
+      background: radial-gradient(58% 50% at 28% 18%, rgba(74,158,255,0.055), transparent 68%),
+                  radial-gradient(50% 46% at 82% 88%, rgba(212,175,55,0.035), transparent 70%);
+    }
+    .slide.is-active::before { opacity: 1; animation: ambient-drift 18s ease-in-out infinite; }
+    .slide--silent::before, .slide--title::before { display: none; }
+    @keyframes ambient-drift {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50%      { transform: translate3d(-2.5%, 1.5%, 0) scale(1.09); }
+    }
+
+    .slide--title.is-active .slide__display {
+      background-size: 220% auto;
+      animation: title-shimmer 7s ease-in-out infinite;
+    }
+    @keyframes title-shimmer {
+      0%, 100% { background-position: 0% center; }
+      50%      { background-position: 100% center; }
+    }
+
+    .slide :nth-child(1) { --i: 0; } .slide :nth-child(2) { --i: 1; }
+    .slide :nth-child(3) { --i: 2; } .slide :nth-child(4) { --i: 3; }
+    .slide :nth-child(5) { --i: 4; } .slide :nth-child(6) { --i: 5; }
+    .slide :nth-child(7) { --i: 6; } .slide :nth-child(8) { --i: 7; }
+    .slide :nth-child(9) { --i: 8; } .slide :nth-child(n+10) { --i: 9; }
+
+    body.anim-ready .slide.is-active :is(.rung, .stat-cell, .callout, .arch-box, .conv-card, .conv-focus, .tri-card) {
+      animation: item-in 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+      animation-delay: calc(0.34s + var(--i, 0) * 0.085s);
+    }
+    @keyframes item-in {
+      from { opacity: 0; transform: translateY(26px) scale(0.97); filter: blur(5px); }
+      to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+
+    body.anim-ready .slide.is-active .lad-arrow {
+      animation: arrow-flow 2.2s ease-in-out infinite;
+      animation-delay: calc(1.1s + var(--i, 0) * 0.16s);
+    }
+    @keyframes arrow-flow {
+      0%, 100% { opacity: 0.35; transform: translateX(0); }
+      50%      { opacity: 1; transform: translateX(5px); text-shadow: 0 0 14px currentColor; }
+    }
+
+    body.anim-ready .slide--silent.is-active .slide__display { animation: numeral-float 7s ease-in-out 1.6s infinite; }
+    @keyframes numeral-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+    /* Harness rings — the architecture breathes; the atom flows through it */
+    .slide.is-active .hr-ring { transform-box: fill-box; transform-origin: center; animation: ring-breathe 9s ease-in-out infinite; }
+    .slide.is-active .hr-ring--2 { animation-delay: 1.5s; }
+    .slide.is-active .hr-ring--3 { animation-delay: 3s; }
+    .slide.is-active .hr-ring--4 { animation-delay: 4.5s; }
+    .slide.is-active .hr-ring--5 { animation-delay: 6s; }
+    .slide.is-active .hr-ring--6 { animation-delay: 7.5s; }
+    .slide.is-active .hr-core-c { transform-box: fill-box; transform-origin: center; animation: core-pulse 4s ease-in-out infinite; }
+    .slide.is-active .hr-flow { stroke-dasharray: 12 16; animation: dash-flow 1.5s linear infinite; }
+    @keyframes ring-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.022); } }
+    @keyframes core-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+    @keyframes dash-flow { to { stroke-dashoffset: -28; } }
+
+    /* The terminal breathes forward — Screen Studio can match-cut into the real one */
+    body.anim-ready .slide.is-active .term { animation: term-approach 9s ease-in-out 1s infinite alternate; }
+    @keyframes term-approach { from { transform: scale(1); } to { transform: scale(1.025); box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 90px rgba(74,158,255,0.12); } }
+
+    .slide::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1s ease; background: radial-gradient(760px circle at var(--mx, 50%) var(--my, 38%), rgba(140, 180, 255, 0.075), transparent 62%); }
+    .slide.is-active::after { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck-progress"></div>
+<div class="deck-counter"><span id="n">01</span> / <span id="total">--</span></div>
+<nav class="deck-tracker" id="tracker" aria-label="Slide progress"></nav>
+<div id="fade"></div>
+
+<div class="deck">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 01 — TÍTULO / HOOK
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--title">
+  <span class="hero-badge">EP 01 · Série Engenharia Agêntica</span>
+  <h1 class="slide__display gradient-text" style="font-size: clamp(44px, 8vw, 112px); letter-spacing: -3px; line-height: 0.96; margin-bottom: 10px;">O Que É<br>Engenharia Agêntica?</h1>
+  <div class="slide__heading" style="font-size: clamp(22px,3vw,42px); margin-bottom: clamp(14px,2.2vh,24px);">
+    <span class="gradient-red" style="font-style: italic;">(99% explica errado)</span>
+  </div>
+  <p class="slide__body" style="max-width: 1180px; margin: 0 auto;">
+    Você já ouviu esse termo mil vezes esse ano. Se eu perguntar o que é exatamente — <strong style="color:var(--text);">você trava.</strong> Em 10 minutos você entende de verdade.
+  </p>
+  <p style="margin-top: clamp(18px,2.8vh,32px); font-family: var(--font-editorial); font-style: italic; font-size: clamp(15px,1.7vw,21px); color: var(--text-dim);">
+    E no fim eu te mostro <span style="color:var(--gold);">um bug que a máquina pegou sozinha</span> — e nenhum humano pegaria.
+  </p>
+  <div class="hero-byline" style="font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: clamp(24px,4vh,44px);">Luan Moreno · Engenharia de Dados Academy</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 02 — O PROBLEMA (silent divider)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--silent" style="background-image: radial-gradient(ellipse at 50% 50%, rgba(248,81,73,0.08) 0%, transparent 70%);">
+  <div class="act-marker">O PROBLEMA · TODO MUNDO FALA, NINGUÉM DEFINE</div>
+  <h1 class="slide__display gradient-red" style="font-size: clamp(120px, 22vw, 300px); margin-bottom: 18px; line-height: 0.9;">99%</h1>
+  <div class="slide__heading" style="font-size: clamp(36px,6vw,76px);">explica <span style="font-style:italic;">errado</span>.</div>
+  <p class="slide__body" style="max-width: 1080px; margin-top: 22px;">
+    "É usar o Cursor." "É prompt avançado." "É deixar a IA programar." — Não. Engenharia agêntica não é uma ferramenta, não é uma frase mágica, <strong style="color:var(--text);">e não é vibe coding com etapas extras.</strong>
+  </p>
+  <div class="section-rule" style="max-width: 640px; width: 100%; margin-top: clamp(22px,3.4vh,40px);">A DEFINIÇÃO DE VERDADE É POR ELIMINAÇÃO — SOBE A ESCADA</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 03 — A ESCADA (diagrama-assinatura do episódio)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="act-marker">TEORIA · DEFINIÇÃO POR ELIMINAÇÃO</div>
+  <div class="slide__label">A ESCADA — EM QUE DEGRAU VOCÊ TÁ?</div>
+  <h2 class="slide__heading" style="margin-bottom: 8px; max-width: 1640px; font-size: clamp(30px,4.6vw,58px);">
+    Quatro degraus. <span class="gradient-gold">Três são técnicas. O último é a disciplina.</span>
+  </h2>
+  <div class="ladder">
+    <div class="rung r1">
+      <div class="rg-num">Degrau 1</div>
+      <div class="rg-name">Prompt<br>Engineering</div>
+      <div class="rg-what">A frase certa. Você conversa com o modelo e torce pra ele entender. Cada pedido começa do zero.</div>
+      <div class="rg-verdict">A frase certa</div>
+    </div>
+    <div class="lad-arrow">↗</div>
+    <div class="rung r2">
+      <div class="rg-num">Degrau 2</div>
+      <div class="rg-name">Context<br>Engineering</div>
+      <div class="rg-what">A informação certa. Specs, regras, exemplos, docs — você monta o mundo que o modelo enxerga antes de pedir qualquer coisa.</div>
+      <div class="rg-verdict">A informação certa</div>
+    </div>
+    <div class="lad-arrow">↗</div>
+    <div class="rung r3">
+      <div class="rg-num">Degrau 3</div>
+      <div class="rg-name">Harness<br>Engineering</div>
+      <div class="rg-what">O sistema certo em volta do modelo. Ferramentas, skills, permissões e gates de verificação — a máquina ganha mãos, freios e um ambiente pra trabalhar.</div>
+      <div class="rg-verdict">O sistema certo</div>
+    </div>
+    <div class="lad-arrow">↗</div>
+    <div class="rung r4">
+      <div class="rg-num">Degrau 4</div>
+      <div class="rg-name">Engenharia<br>Agêntica</div>
+      <div class="rg-what">A disciplina inteira. Prompt + contexto + harness rodando num <em>loop</em> autônomo, com um <em>eval</em> que prova cada entrega — specs entram, trabalho verificado sai, <strong style="color:var(--text);">sem você no meio.</strong></div>
+      <div class="rg-verdict" style="color: var(--green);">A disciplina ✦ onde a série mora</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 04 — MATRIZ VIBE CODING vs ENGENHARIA AGÊNTICA
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="act-marker">TEORIA · O TESTE DE FOGO</div>
+  <div class="slide__label">VIBE CODING vs AGENTIC DEVELOPMENT</div>
+  <h2 class="slide__heading" style="margin-bottom: clamp(14px,2.4vh,28px); font-size: clamp(30px,4.6vw,58px);">
+    Mesma IA. <span class="gradient-text">Jogos completamente diferentes.</span>
+  </h2>
+  <div class="matrix">
+    <div class="mx-cell mx-head" style="color: var(--text-dim);">Dimensão</div>
+    <div class="mx-cell mx-head vibe">Vibe Coding</div>
+    <div class="mx-cell mx-head agent">Agentic Development</div>
+
+    <div class="mx-cell mx-dim">Fonte da verdade</div>
+    <div class="mx-cell mx-vibe">O chat de ontem — que você já perdeu.</div>
+    <div class="mx-cell mx-agent">Spec versionada no git, junto com o código.</div>
+
+    <div class="mx-cell mx-dim">Verificação</div>
+    <div class="mx-cell mx-vibe">Olhômetro: "parece que funcionou".</div>
+    <div class="mx-cell mx-agent">Gate que roda toda vez — teste, lint, reconciliação.</div>
+
+    <div class="mx-cell mx-dim">Reprodutibilidade</div>
+    <div class="mx-cell mx-vibe">Torcer pra sair igual na segunda tentativa.</div>
+    <div class="mx-cell mx-agent">Mesma spec, mesmo resultado — em qualquer engine.</div>
+
+    <div class="mx-cell mx-dim mx-row-last">Quem segura o risco</div>
+    <div class="mx-cell mx-vibe mx-row-last">Você, revisando linha por linha, pra sempre.</div>
+    <div class="mx-cell mx-agent mx-row-last">O sistema, por desenho — o gate revisa tudo.</div>
+  </div>
+  <div class="callout red" style="margin-top: clamp(16px,2.6vh,30px); max-width: 1560px; margin-left: auto; margin-right: auto; width: 100%;">
+    <div class="co-kicker">O SOCO</div>
+    <div class="co-body">Se você só tem o modelo + um prompt — você tá fazendo <strong>vibe coding com etapas extras.</strong></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 05 — KARPATHY (a autoridade)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--silent">
+  <div class="act-marker">TEORIA · POR QUE ISSO IMPORTA AGORA</div>
+  <blockquote class="hero-quote">
+    Vibe coding <span class="gradient-text">levantou o piso</span> — qualquer um constrói algo.<br>
+    Engenharia agêntica <span class="gradient-gold">levanta o teto</span> — poucos constroem algo <em>confiável</em>.
+  </blockquote>
+  <div class="hero-cite">A SÍNTESE DE ANDREJ KARPATHY · "AGENTIC ENGINEERING" · 2025–2026</div>
+  <p class="slide__body" style="max-width: 1000px; margin-top: clamp(22px,3.4vh,40px); font-size: clamp(16px,1.8vw,22px);">
+    O termo que ele cunhou virou disciplina: a habilidade escassa deixou de ser <em>escrever código</em> e passou a ser <strong style="color:var(--text);">desenhar o sistema que faz a IA produzir trabalho confiável.</strong>
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 06 — O FRAME ACADÊMICO (intent · collaboration · verification)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="act-marker">TEORIA · O FRAME ACADÊMICO</div>
+  <div class="slide__label">NÃO É OPINIÃO — É REVISÃO SISTEMÁTICA</div>
+  <h2 class="slide__heading" style="margin-bottom: 4px; font-size: clamp(28px,4.2vw,54px);">
+    O eixo onde <span class="gradient-gold">a literatura de 2026 convergiu.</span>
+  </h2>
+  <div class="triad">
+    <div class="tri-card tr-intent">
+      <span class="tr-pill">◆ INTENT</span>
+      <span class="tr-ghost">01</span>
+      <div class="tr-q">O quê</div>
+      <div class="tr-name">Intent</div>
+      <div class="tr-sub">o quê deve ser feito — a especificação é a fonte da verdade.</div>
+      <ul>
+        <li><b>Você declara o objetivo</b> — a intenção vem antes do código.</li>
+        <li><b>A spec vira o contrato</b> — ela dita o que é certo.</li>
+        <li><b>O código é derivado</b> — não escrito à mão.</li>
+      </ul>
+      <div class="tr-ring">→ anel CONTEXT</div>
+    </div>
+    <div class="tri-card tr-collab">
+      <span class="tr-pill">◆ COLLABORATION</span>
+      <span class="tr-ghost">02</span>
+      <div class="tr-q">O como</div>
+      <div class="tr-name">Collaboration</div>
+      <div class="tr-sub">como humano e IA trabalham juntos — orquestração, não digitação.</div>
+      <ul>
+        <li><b>Humano dá julgamento</b> — a decisão crítica é sua.</li>
+        <li><b>IA executa o loop</b> — planeja, roda, corrige.</li>
+        <li><b>O harness define o ambiente</b> — onde o agente vive.</li>
+      </ul>
+      <div class="tr-ring">→ anéis LOOP + HARNESS</div>
+    </div>
+    <div class="tri-card tr-verify">
+      <span class="tr-pill">◆ VERIFICATION</span>
+      <span class="tr-ghost">03</span>
+      <div class="tr-q">Está certo?</div>
+      <div class="tr-name">Verification</div>
+      <div class="tr-sub">está certo? — evidência computada, não confiança em vibes.</div>
+      <ul>
+        <li><b>Evals medem o resultado</b> — qualidade vira número.</li>
+        <li><b>Testes fecham o loop</b> — o agente prova que funciona.</li>
+        <li><b>Confiança tem receita</b> — não vibe.</li>
+      </ul>
+      <div class="tr-ring">→ anel EVAL</div>
+    </div>
+  </div>
+  <span class="triad-stamp"><span class="ts-lead">ARXIV · 2026</span><span class="ts-hi">Revisão sistemática</span><span class="ts-dot"></span><span>48 papers</span><span class="ts-dot"></span><span>linhagem SE 3.0</span></span>
+  <div class="callout accent" style="margin-top: clamp(12px,1.8vh,20px); max-width: 1680px; margin-left: auto; margin-right: auto; width: 100%;">
+    <div class="co-kicker">POR QUE ISSO IMPORTA</div>
+    <div class="co-body">Não é opinião minha, nem do Karpathy. Em 2026, a literatura acadêmica convergiu pro mesmo eixo: <strong>declarar intenção, colaborar com a IA, verificar o resultado.</strong> Os anéis que você vai ver agora são a versão operacional disso.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 07 — OS ANÉIS DA DISCIPLINA (a anatomia do degrau 3)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide" style="justify-content: center; padding: 0;">
+  <div style="position: absolute; top: clamp(24px,3.5vh,44px); left: clamp(36px,5vw,88px); right: clamp(36px,5vw,88px); z-index: 2; pointer-events: none;">
+    <div class="act-marker">TEORIA · A PRÁTICA COMPLETA</div>
+    <div class="slide__label" style="margin-bottom: 10px;">AGENTIC ENGINEERING — SEIS DISCIPLINAS, UM SISTEMA</div>
+    <h2 class="slide__heading" style="max-width: min(44vw, 860px); font-size: clamp(24px,3.2vw,42px);">
+      O modelo é o miolo. <span class="gradient-gold">A prática são os anéis.</span>
+    </h2>
+  </div>
+  <div class="diagram-wrap" style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
+    <svg viewBox="0 0 1500 880" style="width:100%; height:min(88vh, 100%); display:block;" xmlns="http://www.w3.org/2000/svg" aria-label="The six disciplines of the agentic engineering practice as concentric rings around the model core: Prompt, Context, Harness, Loop, Eval, Fleet">
+      <defs>
+        <radialGradient id="hr-core" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.55"></stop><stop offset="100%" stop-color="#a78bfa" stop-opacity="0.12"></stop></radialGradient>
+        <radialGradient id="hr-r1" cx="50%" cy="50%" r="50%"><stop offset="55%" stop-color="#4a9eff" stop-opacity="0"></stop><stop offset="100%" stop-color="#4a9eff" stop-opacity="0.12"></stop></radialGradient>
+        <radialGradient id="hr-r2" cx="50%" cy="50%" r="50%"><stop offset="62%" stop-color="#22d3ee" stop-opacity="0"></stop><stop offset="100%" stop-color="#22d3ee" stop-opacity="0.10"></stop></radialGradient>
+        <radialGradient id="hr-r3" cx="50%" cy="50%" r="50%"><stop offset="68%" stop-color="#d4af37" stop-opacity="0"></stop><stop offset="100%" stop-color="#d4af37" stop-opacity="0.10"></stop></radialGradient>
+        <radialGradient id="hr-r4" cx="50%" cy="50%" r="50%"><stop offset="73%" stop-color="#b0bec5" stop-opacity="0"></stop><stop offset="100%" stop-color="#b0bec5" stop-opacity="0.08"></stop></radialGradient>
+        <radialGradient id="hr-r5" cx="50%" cy="50%" r="50%"><stop offset="78%" stop-color="#3fb950" stop-opacity="0"></stop><stop offset="100%" stop-color="#3fb950" stop-opacity="0.09"></stop></radialGradient>
+        <radialGradient id="hr-r6" cx="50%" cy="50%" r="50%"><stop offset="83%" stop-color="#c084fc" stop-opacity="0"></stop><stop offset="100%" stop-color="#c084fc" stop-opacity="0.07"></stop></radialGradient>
+        <linearGradient id="hr-in" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="#4a9eff" stop-opacity="0"></stop><stop offset="100%" stop-color="#4a9eff" stop-opacity="1"></stop></linearGradient>
+        <linearGradient id="hr-out" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="#3fb950" stop-opacity="1"></stop><stop offset="100%" stop-color="#3fb950" stop-opacity="0"></stop></linearGradient>
+        <marker id="hr-arr" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="11" markerHeight="11" orient="auto"><path d="M1 1 L13 7 L1 13 L5 7 Z" fill="#4a9eff"></path></marker>
+        <marker id="hr-arr-g" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="11" markerHeight="11" orient="auto"><path d="M1 1 L13 7 L1 13 L5 7 Z" fill="#3fb950"></path></marker>
+        <filter id="hr-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+      </defs>
+
+      <!-- rings, outermost first — true nesting per the jun/2026 consensus: the harness governs ONE run,
+           the loop RUNS the harness over and over, the eval gates the exit, the fleet is MANY of these under one governance -->
+      <!-- MODEL → PROMPT → CONTEXT → HARNESS → LOOP → EVAL → FLEET -->
+      <circle class="hr-ring hr-ring--6" cx="750" cy="434" r="416" fill="url(#hr-r6)" stroke="#c084fc" stroke-width="1.6" stroke-opacity="0.5"></circle>
+      <circle class="hr-ring hr-ring--5" cx="750" cy="434" r="358" fill="url(#hr-r5)" stroke="#3fb950" stroke-width="1.6" stroke-opacity="0.5"></circle>
+      <circle class="hr-ring hr-ring--4" cx="750" cy="434" r="304" fill="url(#hr-r4)" stroke="#b0bec5" stroke-width="1.6" stroke-opacity="0.4"></circle>
+      <circle class="hr-ring hr-ring--3" cx="750" cy="434" r="250" fill="url(#hr-r3)" stroke="#d4af37" stroke-width="1.6" stroke-opacity="0.5"></circle>
+      <circle class="hr-ring hr-ring--2" cx="750" cy="434" r="196" fill="url(#hr-r2)" stroke="#22d3ee" stroke-width="1.6" stroke-opacity="0.5"></circle>
+      <circle class="hr-ring" cx="750" cy="434" r="142" fill="url(#hr-r1)" stroke="#4a9eff" stroke-width="1.6" stroke-opacity="0.55"></circle>
+      <circle class="hr-core-c" cx="750" cy="434" r="88" fill="url(#hr-core)" stroke="#a78bfa" stroke-width="2" filter="url(#hr-glow)"></circle>
+
+      <!-- 12 o'clock — discipline name (Instrument Serif, like the slide 03 cards) + its most important sub-items -->
+      <text x="750" y="48" fill="#c084fc" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Fleet</text>
+      <text x="750" y="67" fill="#ddb8fd" font-family="Fira Code" font-size="12.5" text-anchor="middle">many loops · one governance · the org chart</text>
+
+      <text x="750" y="106" fill="#3fb950" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Eval</text>
+      <text x="750" y="125" fill="#a8e6b4" font-family="Fira Code" font-size="12.5" text-anchor="middle">tests · lint · reconciliation · answer-key</text>
+
+      <text x="750" y="160" fill="#cfd8dc" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Loop</text>
+      <text x="750" y="179" fill="#9fb2bb" font-family="Fira Code" font-size="12.5" text-anchor="middle">act · observe · decide · iterate</text>
+
+      <text x="750" y="214" fill="#d4af37" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Harness</text>
+      <text x="750" y="233" fill="#e6cf8a" font-family="Fira Code" font-size="12.5" text-anchor="middle">tools · skills · MCP · permissions</text>
+
+      <text x="750" y="268" fill="#22d3ee" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Context</text>
+      <text x="750" y="287" fill="#8ae4f2" font-family="Fira Code" font-size="12.5" text-anchor="middle">specs · rules · docs · memory</text>
+
+      <text x="750" y="322" fill="#4a9eff" font-family="Instrument Serif" font-size="27" letter-spacing="0.5" text-anchor="middle">Prompt</text>
+      <text x="750" y="341" fill="#7dc4ff" font-family="Fira Code" font-size="12.5" text-anchor="middle">intent · instructions · examples · format</text>
+
+      <!-- core -->
+      <text x="750" y="428" fill="#ffffff" font-family="Instrument Serif" font-size="46" text-anchor="middle">Model</text>
+      <text x="750" y="454" fill="#e6dcff" font-family="Fira Code" font-size="12" text-anchor="middle">stateless engine</text>
+      <text x="750" y="472" fill="#b9a8e0" font-family="Fira Code" font-size="10.5" text-anchor="middle">text in → text out</text>
+
+      <!-- 6 o'clock — each discipline's essence, mirrored -->
+      <text x="750" y="552" fill="#7dc4ff" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the ask</text>
+      <text x="750" y="606" fill="#8ae4f2" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the world</text>
+      <text x="750" y="660" fill="#e6cf8a" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the moat</text>
+      <text x="750" y="714" fill="#9fb2bb" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the engine</text>
+      <text x="750" y="768" fill="#a8e6b4" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the gate</text>
+      <text x="750" y="822" fill="#ddb8fd" font-family="Fira Code" font-size="12" font-style="italic" text-anchor="middle" opacity="0.85">the workforce</text>
+
+      <path class="hr-flow" d="M28 434 L318 434" stroke="url(#hr-in)" stroke-width="3.5" marker-end="url(#hr-arr)"></path>
+      <text x="172" y="414" fill="#4a9eff" font-family="Fira Code" font-size="13" letter-spacing="2" text-anchor="middle">THE TASK ENTERS</text>
+      <text x="172" y="460" fill="#6e7a8c" font-family="Fira Code" font-size="10.5" text-anchor="middle">a signed task, into the harness</text>
+
+      <path class="hr-flow" d="M1182 434 L1472 434" stroke="url(#hr-out)" stroke-width="3.5" marker-end="url(#hr-arr-g)"></path>
+      <text x="1327" y="414" fill="#3fb950" font-family="Fira Code" font-size="13" letter-spacing="2" text-anchor="middle">VERIFIED WORK GOES OUT</text>
+      <text x="1327" y="460" fill="#6e7a8c" font-family="Fira Code" font-size="10.5" text-anchor="middle">accepted, into the repo</text>
+
+      <text x="750" y="872" fill="#6e7a8c" font-family="Fira Code" font-size="12" letter-spacing="2" text-anchor="middle">SIX DISCIPLINES AROUND THE MODEL · EACH ADDS WHAT THE RAW MODEL LACKS</text>
+    </svg>
+  </div>
+  <p style="position: absolute; bottom: clamp(10px,1.6vh,20px); left: 0; right: 0; text-align:center; font-family: var(--font-editorial); font-style: italic; font-size: clamp(13px,1.4vw,17px); color: var(--text-dim);">
+    Tira uma disciplina, perde uma garantia. A soma das seis <span style="color:var(--text);">É</span> a Engenharia Agêntica — <span style="color:var(--gold);">cada uma merece um episódio.</span>
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 08 — A CONVERGÊNCIA DE PAPÉIS (seis chapéus, um engenheiro)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="act-marker">TEORIA · O QUE ISSO FAZ COM AS CARREIRAS</div>
+  <div class="slide__label">A CONVERGÊNCIA — SEIS CHAPÉUS, UM ENGENHEIRO</div>
+  <h2 class="slide__heading" style="margin-bottom: clamp(12px,2vh,22px); font-size: clamp(28px,4.2vw,54px);">
+    A disciplina não cria um cargo novo. <span class="gradient-gold">Ela funde os que existem.</span>
+  </h2>
+  <div class="conv-grid">
+    <div class="conv-card cv1">
+      <div class="cv-role">Software<br>Engineer</div>
+      <div class="cv-what">sistemas, qualidade, arquitetura de código</div>
+    </div>
+    <div class="conv-card cv2">
+      <div class="cv-role">AI<br>Engineer</div>
+      <div class="cv-what">modelos, prompts, evals</div>
+    </div>
+    <div class="conv-card cv3">
+      <div class="cv-role">Data<br>Engineer</div>
+      <div class="cv-what">pipelines, dados confiáveis</div>
+    </div>
+    <div class="conv-card cv4">
+      <div class="cv-role">Analytics<br>Engineer</div>
+      <div class="cv-what">modelagem, métricas, dbt</div>
+    </div>
+    <div class="conv-card cv5">
+      <div class="cv-role">DevOps /<br>Platform</div>
+      <div class="cv-what">CI/CD, automação, observabilidade</div>
+    </div>
+    <div class="conv-card cv6">
+      <div class="cv-role">Solutions<br>Architect</div>
+      <div class="cv-what">desenho de sistema, trade-offs</div>
+    </div>
+  </div>
+  <div class="conv-merge">↘ ↓ ↙</div>
+  <div class="conv-focus">
+    <div class="cf-kicker">O MERCADO JÁ DEU NOME — E NÚMERO</div>
+    <div class="cf-name gradient-gold">O Generalista AI-Native</div>
+    <div class="cf-pills">
+      <span class="pill gold">FORWARD-DEPLOYED ENGINEER</span>
+      <span class="pill accent">APPLIED AI ENGINEER</span>
+      <span class="pill green">AGENTIC ENGINEER</span>
+    </div>
+    <div class="cf-line">
+      Vagas de <strong>Forward-Deployed Engineer</strong> cresceram <strong style="color:var(--gold);">+1.000% em um ano</strong> (2025→26) — OpenAI e Anthropic contratando o engenheiro que <strong>entende o problema de ponta a ponta</strong> e opera a fábrica de agentes.
+    </div>
+    <div class="cf-quote">
+      "Os mais recompensados não serão só AI-native — serão <span style="color:var(--text);">generalistas curiosos</span> que pensam no problema inteiro." <span style="font-style:normal; font-family:var(--font-mono); font-size:0.75em; letter-spacing:1px;">— BORIS CHERNY, CRIADOR DO CLAUDE CODE</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 09 — A DEFINIÇÃO (payoff do episódio, ~minuto 9)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--silent" style="background-image: radial-gradient(ellipse at 50% 40%, rgba(212,175,55,0.10) 0%, transparent 65%);">
+  <div class="act-marker">O PAYOFF · A DEFINIÇÃO EM UMA FRASE</div>
+  <h2 class="slide__heading" style="font-size: clamp(34px,5.2vw,68px); max-width: 1500px; line-height: 1.15;">
+    Engenharia Agêntica é construir <span class="gradient-gold">o sistema em volta do modelo</span> — contexto, ferramentas, gates e loops — pra que a IA entregue trabalho <span class="gradient-green">verificável</span> sem você no meio.
+  </h2>
+  <div class="section-rule" style="max-width: 640px; width: 100%; margin-top: clamp(26px,4vh,46px);">O MODELO É O MIOLO — O SISTEMA É A DISCIPLINA</div>
+  <p class="slide__body" style="max-width: 980px; margin-top: 10px; font-size: clamp(16px,1.8vw,22px);">
+    E isso não é teoria de slide. Isso são <strong style="color:var(--text);">arquivos reais num repo real</strong> — deixa eu te mostrar.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 10 — TRANSIÇÃO → O REPO (corta pro terminal)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--silent" style="background-image: radial-gradient(ellipse at 50% 85%, rgba(63,185,80,0.08) 0%, transparent 60%);">
+  <div class="act-marker">PRÁTICA · ~3 MINUTOS · TELA REAL</div>
+  <h2 class="slide__display gradient-text" style="font-size: clamp(48px,8vw,110px); margin-bottom: 6px;">Chega de slides.</h2>
+  <p class="slide__body" style="max-width: 1200px; margin-top: 6px;">
+    Os anéis são <strong style="color:var(--text);">arquivos reais, não slides</strong> — e quem apresenta o repo é <strong style="color:var(--text);">o próprio agente.</strong> Um anel, um comando:
+  </p>
+  <div class="term">
+    <div class="term-bar">
+      <span class="tb-dot r"></span><span class="tb-dot y"></span><span class="tb-dot g"></span>
+      <span class="tb-title">uc-postgres-duckdb-dbt-analytics — zsh</span>
+    </div>
+    <div class="term-body"><span class="tp">❯</span> claude <span class="s" style="color:#86efac;">"o que é este repo?"</span>                <span class="tc"># LOOP — o agente se apresenta</span>
+<span class="tp">❯</span> open docs/brd-analytical-backbone.pdf        <span class="tc"># O PEDIDO — BRD: sem tecnologia</span>
+<span class="tp">❯</span> code store/specs/analytical-backbone-dbt.md  <span class="tc"># CONTEXT — a spec falsificável</span>
+<span class="tp">❯</span> ls .claude/skills/                            <span class="tc"># HARNESS — skills e permissões</span>
+<span class="tp">❯</span> make failures                                 <span class="tc"># EVAL — e o agente explica os dados</span>
+<span class="cursor"></span></div>
+  </div>
+  <div class="cut-strip">
+    <span class="cut-rec">REC</span>
+    <span class="cut-label">A partir daqui — <em>tela real</em></span>
+    <span class="cut-meta">~3 min · sem cortes · read-only</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SLIDE 11 — PUNCHLINE + CTA (volta do demo)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="slide slide--title">
+  <div class="act-marker">O FECHO · EP 01</div>
+  <h2 class="slide__display gradient-gold" style="font-size: clamp(52px,9vw,128px); line-height: 0.95; margin-bottom: clamp(16px,2.6vh,28px);">A IA constrói.<br>Você é dono.</h2>
+  <p class="slide__body" style="max-width: 1100px; margin: 0 auto;">
+    O modelo escreve o código. Mas a escada, os gates, o sistema — <strong style="color:var(--text);">isso é engenharia. Isso é seu.</strong>
+  </p>
+  <div style="margin-top: clamp(26px,4.2vh,48px);">
+    <span class="pill green">COMENTA: EM QUE DEGRAU VOCÊ TÁ?</span>
+  </div>
+  <p style="margin-top: clamp(22px,3.6vh,40px); font-family: var(--font-editorial); font-style: italic; font-size: clamp(16px,1.9vw,23px); color: var(--text-dim);">
+    Próximo episódio — <span style="color:var(--text);">se a IA escreve o código, o que sobra pra você?</span><br>
+    <span class="gradient-text" style="font-style: normal; font-family: var(--font-display); font-size: 1.15em;">EP 02 · Pare de Escrever Código. Escreva Specs.</span>
+  </p>
+</section>
+
+</div>
+
+<script>
+  const progress = document.querySelector('.deck-progress');
+  const counter = document.getElementById('n');
+  const totalEl = document.getElementById('total');
+  const tracker = document.getElementById('tracker');
+  const deck = document.querySelector('.deck');
+  const sections = deck.querySelectorAll('section.slide');
+  const total = sections.length;
+
+  totalEl.textContent = String(total).padStart(2, '0');
+
+  const dots = [];
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('span');
+    d.className = 'dot';
+    d.dataset.idx = i;
+    tracker.appendChild(d);
+    dots.push(d);
+  }
+
+  let currentIdx = -1;
+  function paint(idx) {
+    if (idx === currentIdx) return;
+    currentIdx = idx;
+    for (let i = 0; i < total; i++) {
+      const el = dots[i];
+      if (i === idx) el.className = 'dot current';
+      else if (i < idx) el.className = 'dot passed';
+      else el.className = 'dot';
+    }
+  }
+
+  deck.addEventListener('scroll', () => {
+    const scrollTotal = deck.scrollHeight - deck.clientHeight;
+    const pct = scrollTotal > 0 ? (deck.scrollTop / scrollTotal) * 100 : 0;
+    progress.style.width = pct + '%';
+    const idx = Math.min(total - 1, Math.round(deck.scrollTop / deck.clientHeight));
+    counter.textContent = String(idx + 1).padStart(2, '0');
+    paint(idx);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const h = deck.clientHeight;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      e.preventDefault(); deck.scrollBy({ top: h, behavior: 'smooth' });
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault(); deck.scrollBy({ top: -h, behavior: 'smooth' });
+    } else if (e.key === 'Home') {
+      e.preventDefault(); deck.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (e.key === 'End') {
+      e.preventDefault(); deck.scrollTo({ top: deck.scrollHeight, behavior: 'smooth' });
+    } else if (e.key === 't' || e.key === 'T') {
+      /* Clean-cut helper: fades the whole screen to the terminal's background
+         color so Screen Studio can cut to the real terminal invisibly.
+         Press T again to fade back when returning from the demo. */
+      e.preventDefault(); document.getElementById('fade').classList.toggle('on');
+    }
+  });
+
+  paint(0);
+
+  /* Deep-link: open with #3 to start on slide 3 (handy for retakes). */
+  const jump = parseInt((location.hash || '').slice(1), 10);
+  if (jump >= 1 && jump <= total) {
+    requestAnimationFrame(() => deck.scrollTo({ top: (jump - 1) * deck.clientHeight, behavior: 'instant' }));
+  }
+
+  (function () {
+    if (!('IntersectionObserver' in window)) {
+      sections.forEach((s) => s.classList.add('is-active'));
+      return;
+    }
+    document.body.classList.add('anim-ready');
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting && en.intersectionRatio >= 0.5) {
+          en.target.classList.add('is-active');
+        } else {
+          en.target.classList.remove('is-active');
+        }
+      });
+    }, { root: deck, threshold: [0, 0.5, 0.85] });
+
+    deck.addEventListener('pointermove', (e) => {
+      deck.style.setProperty('--mx', (e.clientX / window.innerWidth * 100).toFixed(2) + '%');
+      deck.style.setProperty('--my', (e.clientY / window.innerHeight * 100).toFixed(2) + '%');
+    }, { passive: true });
+    sections.forEach((s) => revealObserver.observe(s));
+    sections[0].classList.add('is-active');
+  })();
+</script>
+
+</body>
+</html>
